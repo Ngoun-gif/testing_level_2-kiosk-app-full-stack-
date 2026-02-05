@@ -1,0 +1,80 @@
+
+  <div class="c2">
+
+    <div class="c2-header">
+      <div class="c2-header-title">Your Order</div>
+    </div>
+
+    <div class="c2-body">
+
+      <div class="c2-section-title">Your Items</div>
+
+      <div v-if="!lines.length" class="c2-empty">
+        Your cart is empty
+      </div>
+
+      <div v-else class="c2-list">
+
+        <div v-for="(it, idx) in lines" :key="idx" class="c2-item">
+
+          <div class="c2-left">
+            <div class="c2-thumb">
+              <img class="c2-img" :src="img(it)" @error="e => e.target.src='./assets/placeholder.png'" alt="">
+            </div>
+
+            <div class="c2-info">
+              <div class="c2-name">{{ it.name }}</div>
+
+              <!-- ✅ Variants grouped by group_name -->
+              <div v-if="it.variants && it.variants.length" class="c2-variants">
+                <div v-for="(vals, gname) in groupVariants(it.variants)" :key="gname" class="c2-vgroup">
+                  <div class="c2-vgname">{{ gname }}</div>
+
+                  <div class="c2-vitems">
+                    <div v-for="(v, vi) in vals" :key="vi" class="c2-var">
+                      • {{ v.value_name }}
+                      <span v-if="Number(v.extra_price || 0) > 0" class="c2-var-plus">
+                        (+{{ Number(v.extra_price).toFixed(2) }})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="c2-qtyrow">
+                <div class="c2-qtybox">
+                  <button class="c2-qtybtn" type="button" @click="decQty(idx)">−</button>
+                  <div class="c2-qtynum">{{ it.qty }}</div>
+                  <button class="c2-qtybtn" type="button" @click="incQty(idx)">+</button>
+                </div>
+
+                <button class="c2-edit" type="button" @click="editItem(idx)">Edit</button>
+                <button class="c2-remove" type="button" @click="removeItem(idx)">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="c2-right">
+            <div class="c2-price">$ {{ Number(it.line_total || 0).toFixed(2) }}</div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="c2-total-line" v-if="lines.length">
+        <span>Total</span>
+        <span class="c2-total-amount">$ {{ total.toFixed(2) }}</span>
+      </div>
+
+    </div>
+
+    <div class="c2-footer">
+      <button class="c2-back" type="button" @click="goMenu">Back</button>
+
+      <button class="c2-pay" type="button" :disabled="count === 0" @click="confirmOrder">
+        Pay
+      </button>
+    </div>
+
+  </div>

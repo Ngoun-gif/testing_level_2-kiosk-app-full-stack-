@@ -1,0 +1,1234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kiosk Dashboard</title>
+
+  <!-- AdminLTE CSS -->
+  <link rel="stylesheet" href="./assets/plugins/fontawesome-free/css/all.min.css">
+  <link rel="stylesheet" href="./assets/dist/css/adminlte.css">
+
+  <!-- Optional plugin CSS -->
+  <link rel="stylesheet" href="./assets/plugins/toastr/toastr.min.css">
+  <link rel="stylesheet" href="./assets/plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
+  <link rel="stylesheet" href="./assets/plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
+  <link rel="stylesheet" href="./assets/plugins/datatables-responsive/css/responsive.bootstrap4.min.css">
+  <link rel="stylesheet" href="./assets/plugins/datatables-buttons/css/buttons.bootstrap4.min.css">
+</head>
+
+<body class="hold-transition sidebar-mini">
+  <div id="adminApp"></div>
+
+  <!-- AdminLTE core (NO defer) -->
+  <script src="./assets/plugins/jquery/jquery.min.js"></script>
+  <script src="./assets/plugins/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="./assets/dist/js/adminlte.js"></script>
+
+  <!-- Optional plugins (NO defer, still ok) -->
+  <script src="./assets/plugins/sweetalert2/sweetalert2.min.js"></script>
+  <script src="./assets/plugins/toastr/toastr.min.js"></script>
+
+  <!-- DataTables (NO defer) -->
+  <script src="./assets/plugins/datatables/jquery.dataTables.min.js"></script>
+  <script src="./assets/plugins/datatables-bs4/js/dataTables.bootstrap4.min.js"></script>
+  <script src="./assets/plugins/datatables-responsive/js/dataTables.responsive.min.js"></script>
+  <script src="./assets/plugins/datatables-responsive/js/responsive.bootstrap4.min.js"></script>
+  <script src="./assets/plugins/datatables-buttons/js/dataTables.buttons.min.js"></script>
+  <script src="./assets/plugins/datatables-buttons/js/buttons.bootstrap4.min.js"></script>
+  <script src="./assets/plugins/jszip/jszip.min.js"></script>
+  <script src="./assets/plugins/pdfmake/pdfmake.min.js"></script>
+  <script src="./assets/plugins/pdfmake/vfs_fonts.js"></script>
+  <script src="./assets/plugins/datatables-buttons/js/buttons.html5.min.js"></script>
+  <script src="./assets/plugins/datatables-buttons/js/buttons.print.min.js"></script>
+  <script src="./assets/plugins/datatables-buttons/js/buttons.colVis.min.js"></script>
+
+  <!-- ✅ Vue + your app MUST be deferred (because templates are injected at end of body) -->
+  <script defer src="./assets/js/vue.global.prod.js"></script>
+  <script defer src="./js/core/api.js"></script>
+  <script defer src="./js/core/tpl.js"></script>
+  <script defer src="./js/core/router.js"></script>
+  <script defer src="./js/module/category.js"></script>
+  <script defer src="./js/module/sub-category.js"></script>
+  <script defer src="./js/module/product.js"></script>
+  <script defer src="js/module/variant.js"></script>
+
+
+
+
+  <script defer src="./app.js"></script>
+
+
+<template id="tpl-category">
+<!-- dashboard/pages/category.html (or wherever tpl-category is defined) -->
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card card-outline card-primary">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">
+            <i class="fas fa-tags mr-2"></i> Category
+          </h3>
+
+          <div class="d-flex align-items-center" style="gap:10px;">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="catShowInactive" v-model="includeInactive"
+                @change="load">
+              <label class="custom-control-label" for="catShowInactive">Show inactive</label>
+            </div>
+
+            <button class="btn btn-primary btn-sm" @click="openCreate">
+              <i class="fas fa-plus"></i> New
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-md-4">
+              <input class="form-control form-control-sm" placeholder="Search..." v-model="q">
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="table table-bordered table-hover table-sm">
+              <thead>
+                <tr>
+                  <th style="width:70px;">#</th>
+                  <th style="width:90px;">Image</th>
+                  <th>Name</th>
+                  <th style="width:110px;">Sort</th>
+                  <th style="width:120px;">Status</th>
+                  <th style="width:280px;">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr v-for="c in filtered" :key="c.id">
+                  <td>{{ c.id }}</td>
+
+                  <td class="text-center">
+                    <img v-if="c.image_url" :src="c.image_url + '?v=' + renderTick"
+                      style="width:44px;height:44px;object-fit:cover;border-radius:6px;" alt="cat">
+                    <span v-else class="text-muted">—</span>
+                  </td>
+
+                  <td class="font-weight-bold">{{ c.name }}</td>
+
+                  <td>{{ c.sort_order }}</td>
+
+                  <td>
+                    <span class="badge" :class="c.is_active ? 'badge-success' : 'badge-secondary'">
+                      {{ c.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button class="btn btn-warning btn-sm mr-1" @click="openEdit(c)">
+                      <i class="fas fa-edit"></i> Edit
+                    </button>
+
+                    <button class="btn btn-outline-secondary btn-sm mr-1" @click="toggle(c)">
+                      <i class="fas fa-power-off"></i>
+                      {{ c.is_active ? 'Disable' : 'Enable' }}
+                    </button>
+
+                    <button class="btn btn-outline-danger btn-sm" @click="remove(c)">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </td>
+                </tr>
+
+                <tr v-if="filtered.length === 0">
+                  <td colspan="6" class="text-center text-muted py-4">No data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Create/Edit -->
+    <div class="modal fade" id="catModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-tags mr-2"></i> {{ isEdit ? 'Edit Category' : 'New Category' }}
+            </h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Name <span class="text-danger">*</span></label>
+              <input class="form-control" v-model.trim="form.name" placeholder="Category name">
+            </div>
+
+            <div class="form-group">
+              <label>Sort Order</label>
+              <input type="number" class="form-control" v-model.number="form.sort_order" min="0">
+            </div>
+
+            <div class="form-group">
+              <label>Image</label>
+              <div class="d-flex align-items-center" style="gap:12px;">
+                <div
+                  style="width:72px;height:72px;border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;">
+                  <img v-if="previewUrl" :src="previewUrl" style="width:100%;height:100%;object-fit:cover;">
+                  <span v-else class="text-muted small">No image</span>
+                </div>
+
+                <div class="flex-grow-1">
+                  <input type="file" class="form-control" accept="image/*" @change="onPickImage">
+                  <small class="text-muted">PNG/JPG/WebP, max 2MB</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="catActive" v-model="form.is_active">
+              <label class="custom-control-label" for="catActive">Active</label>
+            </div>
+
+            <div v-if="errorMsg" class="alert alert-danger mt-3 py-2">{{ errorMsg }}</div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="save" :disabled="saving">
+              <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</template>
+
+
+<template id="tpl-dashboard">
+<div class="container-fluid">
+  <div class="row mb-3">
+    <div class="col">
+      <h4 class="mb-0">Dashboard</h4>
+      <small class="text-muted">Overview & statistics</small>
+    </div>
+  </div>
+
+  <!-- Small boxes -->
+  <div class="row">
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-info">
+        <div class="inner">
+          <h3>150</h3>
+          <p>Orders</p>
+        </div>
+        <div class="icon">
+          <i class="fas fa-shopping-cart"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-success">
+        <div class="inner">
+          <h3>53</h3>
+          <p>Products</p>
+        </div>
+        <div class="icon">
+          <i class="fas fa-box"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-warning">
+        <div class="inner">
+          <h3>44</h3>
+          <p>Categories</p>
+        </div>
+        <div class="icon">
+          <i class="fas fa-tags"></i>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-3 col-6">
+      <div class="small-box bg-danger">
+        <div class="inner">
+          <h3>65</h3>
+          <p>Variants</p>
+        </div>
+        <div class="icon">
+          <i class="fas fa-layer-group"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</template>
+
+
+<template id="tpl-layout-footer">
+<footer class="main-footer text-sm">
+  <strong>CA Solutions Cambodia</strong>
+  <span class="float-right">
+    {{ router.state.footerMsg }}
+  </span>
+</footer>
+
+</template>
+
+
+<template id="tpl-layout-header">
+<nav class="main-header navbar navbar-expand navbar-white navbar-light">
+  <!-- Left navbar links -->
+  <ul class="navbar-nav">
+    <li class="nav-item">
+      <!-- AdminLTE pushmenu -->
+      <a class="nav-link" data-widget="pushmenu" href="#" role="button">
+        <i class="fas fa-bars"></i>
+      </a>
+    </li>
+
+    <!-- SPA links (Vue routing) -->
+    <li class="nav-item d-none d-sm-inline-block">
+      <a href="#" class="nav-link" @click.prevent="router.go('category')">Home</a>
+    </li>
+    <li class="nav-item d-none d-sm-inline-block">
+      <a href="#" class="nav-link" @click.prevent="router.go('product')">Products</a>
+    </li>
+  </ul>
+
+  <!-- Right navbar links -->
+  <ul class="navbar-nav ml-auto">
+    <!-- Navbar Search -->
+    <li class="nav-item">
+      <a class="nav-link" data-widget="navbar-search" href="#" role="button">
+        <i class="fas fa-search"></i>
+      </a>
+      <div class="navbar-search-block">
+        <form class="form-inline" @submit.prevent>
+          <div class="input-group input-group-sm">
+            <input class="form-control form-control-navbar" type="search" placeholder="Search" aria-label="Search">
+            <div class="input-group-append">
+              <button class="btn btn-navbar" type="button">
+                <i class="fas fa-search"></i>
+              </button>
+              <button class="btn btn-navbar" type="button" data-widget="navbar-search">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </li>
+
+    <!-- Messages Dropdown Menu -->
+    <li class="nav-item dropdown">
+      <a class="nav-link" data-toggle="dropdown" href="#">
+        <i class="far fa-comments"></i>
+        <span class="badge badge-danger navbar-badge">3</span>
+      </a>
+
+      <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+        <a href="#" class="dropdown-item">
+          <div class="media">
+            <!-- ✅ fixed path -->
+            <img src="./assets/dist/img/user3-128x128.jpg" alt="User Avatar"
+                 class="img-size-50 mr-3 img-circle">
+            <div class="media-body">
+              <h3 class="dropdown-item-title">
+                Brad Diesel
+                <span class="float-right text-sm text-danger"><i class="fas fa-star"></i></span>
+              </h3>
+              <p class="text-sm">Call me whenever you can...</p>
+              <p class="text-sm text-muted"><i class="far fa-clock mr-1"></i> 4 Hours Ago</p>
+            </div>
+          </div>
+        </a>
+
+        <div class="dropdown-divider"></div>
+
+        <a href="#" class="dropdown-item">
+          <div class="media">
+            <img src="./assets/dist/img/user8-128x128.jpg" alt="User Avatar"
+                 class="img-size-50 img-circle mr-3">
+            <div class="media-body">
+              <h3 class="dropdown-item-title">
+                John Pierce
+                <span class="float-right text-sm text-muted"><i class="fas fa-star"></i></span>
+              </h3>
+              <p class="text-sm">I got your message bro</p>
+              <p class="text-sm text-muted"><i class="far fa-clock mr-1"></i> 4 Hours Ago</p>
+            </div>
+          </div>
+        </a>
+
+        <div class="dropdown-divider"></div>
+
+        <a href="#" class="dropdown-item dropdown-footer">See All Messages</a>
+      </div>
+    </li>
+
+    <!-- Notifications Dropdown Menu -->
+    <li class="nav-item dropdown">
+      <a class="nav-link" data-toggle="dropdown" href="#">
+        <i class="far fa-bell"></i>
+        <span class="badge badge-warning navbar-badge">15</span>
+      </a>
+
+      <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
+        <span class="dropdown-item dropdown-header">15 Notifications</span>
+        <div class="dropdown-divider"></div>
+
+        <a href="#" class="dropdown-item">
+          <i class="fas fa-envelope mr-2"></i> 4 new messages
+          <span class="float-right text-muted text-sm">3 mins</span>
+        </a>
+
+        <div class="dropdown-divider"></div>
+
+        <a href="#" class="dropdown-item dropdown-footer">See All Notifications</a>
+      </div>
+    </li>
+
+    <!-- Fullscreen -->
+    <li class="nav-item">
+      <a class="nav-link" data-widget="fullscreen" href="#" role="button">
+        <i class="fas fa-expand-arrows-alt"></i>
+      </a>
+    </li>
+
+    <!-- OPTIONAL: Logout button (Vue method) -->
+    <li class="nav-item">
+      <a class="nav-link text-danger" href="#" @click.prevent="logout">
+        <i class="fas fa-sign-out-alt"></i>
+      </a>
+    </li>
+  </ul>
+</nav>
+
+</template>
+
+
+<template id="tpl-layout-master">
+<div class="content-wrapper">
+  <section class="content pt-3">
+    <div class="container-fluid">
+      <component :is="currentView"></component>
+    </div>
+  </section>
+</div>
+
+</template>
+
+
+<template id="tpl-layout-sidebar">
+<aside class="main-sidebar sidebar-dark-primary elevation-4">
+  <!-- Brand Logo -->
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- User panel -->
+    <div class="user-panel mt-3 pb-3 mb-3 d-flex flex-column align-items-center text-center">
+      <img src="./assets/dist/img/ca.png"
+           alt="CA Solutions"
+           class="img-circle elevation-2"
+           style="width:56px; height:56px; object-fit:cover;">
+
+      <div class="mt-2">
+        <span class="d-block text-white fw-bold" style="letter-spacing:.3px;">
+          CA Solutions
+        </span>
+        <small class="text-muted d-block">Admin Dashboard</small>
+      </div>
+    </div>
+
+
+    <!-- Menu -->
+    <nav class="mt-2">
+      <ul class="nav nav-pills nav-sidebar flex-column"
+          data-widget="treeview"
+          role="menu"
+          data-accordion="false">
+
+        <!-- Dashboard -->
+
+        <li class="nav-item">
+          <a href="#"
+             class="nav-link"
+             :class="{ active: router.state.route === 'dashboard' }"
+             @click.prevent="router.go('dashboard')">
+            <i class="nav-icon fas fa-tachometer-alt"></i>
+            <p>Dashboard</p>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#"
+             class="nav-link"
+             :class="{ active: router.state.route === 'category' }"
+             @click.prevent="router.go('category')">
+            <i class="nav-icon fas fa-tags"></i>
+            <p>Category</p>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#"
+             class="nav-link"
+             :class="{ active: router.state.route === 'sub_category' }"
+             @click.prevent="router.go('sub_category')">
+            <i class="nav-icon fas fa-sitemap"></i>
+            <p>Sub-Category</p>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#"
+             class="nav-link"
+             :class="{ active: router.state.route === 'product' }"
+             @click.prevent="router.go('product')">
+            <i class="nav-icon fas fa-box"></i>
+            <p>Product</p>
+          </a>
+        </li>
+
+        <li class="nav-item">
+          <a href="#"
+             class="nav-link"
+             :class="{ active: router.state.route === 'variant' }"
+             @click.prevent="router.go('variant')">
+            <i class="nav-icon fas fa-layer-group"></i>
+            <p>Product Variant</p>
+          </a>
+        </li>
+
+        <!-- Divider -->
+        <li class="nav-header">SYSTEM</li>
+
+        <li class="nav-item">
+          <a href="#"
+             class="nav-link text-danger"
+             @click.prevent="logout">
+            <i class="nav-icon fas fa-sign-out-alt"></i>
+            <p>Logout</p>
+          </a>
+        </li>
+
+      </ul>
+    </nav>
+  </div>
+</aside>
+
+</template>
+
+
+<template id="tpl-product">
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card card-outline card-primary">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">
+            <i class="fas fa-box mr-2"></i> Product
+          </h3>
+
+          <div class="d-flex align-items-center" style="gap:10px;">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="prdShowInactive"
+                     v-model="includeInactive" @change="load">
+              <label class="custom-control-label" for="prdShowInactive">Show inactive</label>
+            </div>
+
+            <button class="btn btn-primary btn-sm" @click="openCreate" :disabled="subCategoryId===0">
+              <i class="fas fa-plus"></i> New
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- Filters -->
+          <div class="row mb-2">
+            <div class="col-md-3 mb-2 mb-md-0">
+              <input class="form-control form-control-sm" placeholder="Search..."
+                     v-model="q">
+            </div>
+
+            <div class="col-md-3 mb-2 mb-md-0">
+              <select class="form-control form-control-sm" v-model.number="categoryId" @change="onChangeCategory">
+                <option :value="0">-- Select Category --</option>
+                <option v-for="c in categories" :key="c.id" :value="c.id">
+                  {{ c.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-3">
+              <select class="form-control form-control-sm" v-model.number="subCategoryId" @change="load" :disabled="categoryId===0">
+                <option :value="0">-- Select Sub-Category --</option>
+                <option v-for="sc in subCategories" :key="sc.id" :value="sc.id">
+                  {{ sc.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="subCategoryId===0" class="alert alert-info py-2">
+            Please select a sub-category first.
+          </div>
+
+          <!-- Table -->
+          <div v-else class="table-responsive">
+            <table class="table table-bordered table-hover table-sm">
+              <thead>
+                <tr>
+                  <th style="width:70px;">#</th>
+                  <th style="width:90px;">Image</th>
+                  <th style="width:120px;">SKU</th>
+                  <th>Name</th>
+                  <th style="width:120px;">Base Price</th>
+                  <th style="width:90px;">Sort</th>
+                  <th style="width:120px;">Status</th>
+                  <th style="width:320px;">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr v-for="p in filtered" :key="p.id">
+                  <td>{{ p.id }}</td>
+
+                  <td class="text-center">
+                    <img v-if="p.image_url" :src="p.image_url + '?v=' + renderTick"
+                      style="width:44px;height:44px;object-fit:cover;border-radius:6px;" alt="product">
+                    <span v-else class="text-muted">—</span>
+                  </td>
+
+                  <td><span class="badge badge-light">{{ p.sku || '—' }}</span></td>
+                  <td class="font-weight-bold">{{ p.name }}</td>
+                  <td>{{ formatPrice(p.base_price) }}</td>
+                  <td>{{ p.sort_order }}</td>
+
+                  <td>
+                    <span class="badge" :class="p.is_active ? 'badge-success' : 'badge-secondary'">
+                      {{ p.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button class="btn btn-warning btn-sm mr-1" @click="openEdit(p)">
+                      <i class="fas fa-edit"></i> Edit
+                    </button>
+
+                    <button class="btn btn-outline-secondary btn-sm mr-1" @click="toggle(p)">
+                      <i class="fas fa-power-off"></i>
+                      {{ p.is_active ? 'Disable' : 'Enable' }}
+                    </button>
+
+                    <button class="btn btn-outline-danger btn-sm" @click="remove(p)">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </td>
+                </tr>
+
+                <tr v-if="filtered.length === 0">
+                  <td colspan="8" class="text-center text-muted py-4">No data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Create/Edit -->
+    <div class="modal fade" id="prdModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-box mr-2"></i> {{ isEdit ? 'Edit Product' : 'New Product' }}
+            </h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Sub-Category <span class="text-danger">*</span></label>
+              <select class="form-control" v-model.number="form.sub_category_id">
+                <option :value="0">-- Select Sub-Category --</option>
+                <option v-for="sc in subCategories" :key="sc.id" :value="sc.id">
+                  {{ sc.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Name <span class="text-danger">*</span></label>
+              <input class="form-control" v-model.trim="form.name" placeholder="Product name">
+            </div>
+
+            <div class="form-group">
+              <label>SKU (unique)</label>
+              <input class="form-control" v-model.trim="form.sku" placeholder="Optional SKU">
+            </div>
+
+            <div class="form-group">
+              <label>Base Price</label>
+              <input type="number" class="form-control" v-model.number="form.base_price" step="0.01" min="0">
+            </div>
+
+            <div class="form-group">
+              <label>Sort Order</label>
+              <input type="number" class="form-control" v-model.number="form.sort_order" min="0">
+            </div>
+
+            <div class="form-group">
+              <label>Image</label>
+              <div class="d-flex align-items-center" style="gap:12px;">
+                <div style="width:72px;height:72px;border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;">
+                  <img v-if="previewUrl" :src="previewUrl" style="width:100%;height:100%;object-fit:cover;">
+                  <span v-else class="text-muted small">No image</span>
+                </div>
+
+                <div class="flex-grow-1">
+                  <input type="file" class="form-control" accept="image/*" @change="onPickImage">
+                  <small class="text-muted">PNG/JPG/WebP, max 2MB</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="prdActive" v-model="form.is_active">
+              <label class="custom-control-label" for="prdActive">Active</label>
+            </div>
+
+            <div v-if="errorMsg" class="alert alert-danger mt-3 py-2">{{ errorMsg }}</div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="save" :disabled="saving">
+              <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+</template>
+
+
+<template id="tpl-sub_category">
+<!-- dashboard/pages/sub_category.html (FULL) -->
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card card-outline card-primary">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">
+            <i class="fas fa-sitemap mr-2"></i> Sub-Category
+          </h3>
+
+          <div class="d-flex align-items-center" style="gap:10px;">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="subShowInactive"
+                     v-model="includeInactive" @change="load">
+              <label class="custom-control-label" for="subShowInactive">Show inactive</label>
+            </div>
+
+            <button class="btn btn-primary btn-sm" @click="openCreate" :disabled="categoryId===0">
+              <i class="fas fa-plus"></i> New
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <div class="row mb-2">
+            <div class="col-md-4 mb-2 mb-md-0">
+              <input class="form-control form-control-sm" placeholder="Search..."
+                     v-model="q">
+            </div>
+
+            <div class="col-md-4">
+              <select class="form-control form-control-sm" v-model.number="categoryId" @change="load">
+                <option :value="0">-- Select Category --</option>
+                <option v-for="c in categories" :key="c.id" :value="c.id">
+                  {{ c.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div v-if="categoryId===0" class="alert alert-info py-2">
+            Please select a category first.
+          </div>
+
+          <div v-else class="table-responsive">
+            <table class="table table-bordered table-hover table-sm">
+              <thead>
+                <tr>
+                  <th style="width:70px;">#</th>
+                  <th style="width:90px;">Image</th>
+                  <th>Name</th>
+                  <th style="width:110px;">Sort</th>
+                  <th style="width:120px;">Status</th>
+                  <th style="width:240px;">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr v-for="sc in filtered" :key="sc.id">
+                  <td>{{ sc.id }}</td>
+
+                  <td class="text-center">
+                    <img v-if="sc.image_url" :src="sc.image_url + '?v=' + renderTick"
+                      style="width:44px;height:44px;object-fit:cover;border-radius:6px;" alt="subcat">
+                    <span v-else class="text-muted">—</span>
+                  </td>
+
+                  <td class="font-weight-bold">{{ sc.name }}</td>
+                  <td>{{ sc.sort_order }}</td>
+
+                  <td>
+                    <span class="badge" :class="sc.is_active ? 'badge-success' : 'badge-secondary'">
+                      {{ sc.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button class="btn btn-warning btn-sm mr-1" @click="openEdit(sc)">
+                      <i class="fas fa-edit"></i> Edit
+                    </button>
+
+                    <button class="btn btn-outline-secondary btn-sm" @click="toggle(sc)">
+                      <i class="fas fa-power-off"></i>
+                      {{ sc.is_active ? 'Disable' : 'Enable' }}
+                    </button>
+
+                    <button class="btn btn-outline-danger btn-sm" @click="remove(sc)">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </td>
+                </tr>
+
+                <tr v-if="filtered.length === 0">
+                  <td colspan="6" class="text-center text-muted py-4">No data</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Create/Edit -->
+    <div class="modal fade" id="subModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-sitemap mr-2"></i> {{ isEdit ? 'Edit Sub-Category' : 'New Sub-Category' }}
+            </h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Category <span class="text-danger">*</span></label>
+              <select class="form-control" v-model.number="form.category_id">
+                <option :value="0">-- Select Category --</option>
+                <option v-for="c in categories" :key="c.id" :value="c.id">
+                  {{ c.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label>Name <span class="text-danger">*</span></label>
+              <input class="form-control" v-model.trim="form.name" placeholder="Sub-category name">
+            </div>
+
+            <div class="form-group">
+              <label>Sort Order</label>
+              <input type="number" class="form-control" v-model.number="form.sort_order" min="0">
+            </div>
+
+            <div class="form-group">
+              <label>Image</label>
+              <div class="d-flex align-items-center" style="gap:12px;">
+                <div style="width:72px;height:72px;border:1px solid #ddd;border-radius:8px;overflow:hidden;background:#f8f9fa;display:flex;align-items:center;justify-content:center;">
+                  <img v-if="previewUrl" :src="previewUrl" style="width:100%;height:100%;object-fit:cover;">
+                  <span v-else class="text-muted small">No image</span>
+                </div>
+
+                <div class="flex-grow-1">
+                  <input type="file" class="form-control" accept="image/*" @change="onPickImage">
+                  <small class="text-muted">PNG/JPG/WebP, max 2MB</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="subActive" v-model="form.is_active">
+              <label class="custom-control-label" for="subActive">Active</label>
+            </div>
+
+            <div v-if="errorMsg" class="alert alert-danger mt-3 py-2">{{ errorMsg }}</div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="save" :disabled="saving">
+              <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</template>
+
+
+<template id="tpl-variant">
+<!-- dashboard/pages/variant.html -->
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card card-outline card-primary">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">
+            <i class="fas fa-sliders-h mr-2"></i> Variants (Groups & Values)
+          </h3>
+
+          <div class="d-flex align-items-center" style="gap:10px;">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="vgShowInactive"
+                     v-model="includeInactive" @change="loadGroups">
+              <label class="custom-control-label" for="vgShowInactive">Show inactive</label>
+            </div>
+
+            <button class="btn btn-primary btn-sm" @click="openCreateGroup" :disabled="productId===0">
+              <i class="fas fa-plus"></i> New Group
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- Filters -->
+          <div class="row mb-2">
+            <div class="col-md-3 mb-2 mb-md-0">
+              <select class="form-control form-control-sm" v-model.number="categoryId" @change="onChangeCategory">
+                <option :value="0">-- Select Category --</option>
+                <option v-for="c in (categories||[])" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-3 mb-2 mb-md-0">
+              <select class="form-control form-control-sm" v-model.number="subCategoryId" @change="onChangeSubCategory" :disabled="categoryId===0">
+                <option :value="0">-- Select Sub-Category --</option>
+                <option v-for="sc in (subCategories||[])" :key="sc.id" :value="sc.id">{{ sc.name }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-4 mb-2 mb-md-0">
+              <select class="form-control form-control-sm" v-model.number="productId" @change="loadGroups" :disabled="subCategoryId===0">
+                <option :value="0">-- Select Product --</option>
+                <option v-for="p in (products||[])" :key="p.id" :value="p.id">{{ p.name }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-2">
+              <input class="form-control form-control-sm" placeholder="Search group..."
+                     v-model="q">
+            </div>
+          </div>
+
+          <div v-if="productId===0" class="alert alert-info py-2">
+            Please select a product first.
+          </div>
+
+          <!-- Group table -->
+          <div v-else class="table-responsive">
+            <table class="table table-bordered table-hover table-sm">
+              <thead>
+                <tr>
+                  <th style="width:70px;">#</th>
+                  <th>Name</th>
+                  <th style="width:110px;">Required</th>
+                  <th style="width:120px;">Max Select</th>
+                  <th style="width:90px;">Sort</th>
+                  <th style="width:120px;">Status</th>
+                  <th style="width:360px;">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr v-for="g in filteredGroups" :key="g.id">
+                  <td>{{ g.id }}</td>
+                  <td class="font-weight-bold">{{ g.name }}</td>
+
+                  <td>
+                    <span class="badge" :class="g.is_required ? 'badge-info' : 'badge-light'">
+                      {{ g.is_required ? 'YES' : 'NO' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span class="badge badge-light">{{ g.max_select }}</span>
+                    <small class="text-muted ml-1">
+                      {{ g.max_select == 1 ? '(single)' : '(multi)' }}
+                    </small>
+                  </td>
+
+                  <td>{{ g.sort_order }}</td>
+
+                  <td>
+                    <span class="badge" :class="g.is_active ? 'badge-success' : 'badge-secondary'">
+                      {{ g.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button class="btn btn-info btn-sm mr-1" @click="openValues(g)">
+                      <i class="fas fa-list"></i> Values
+                    </button>
+
+                    <button class="btn btn-warning btn-sm mr-1" @click="openEditGroup(g)">
+                      <i class="fas fa-edit"></i> Edit
+                    </button>
+
+                    <button class="btn btn-outline-secondary btn-sm mr-1" @click="toggleGroup(g)">
+                      <i class="fas fa-power-off"></i> {{ g.is_active ? 'Disable' : 'Enable' }}
+                    </button>
+
+                    <button class="btn btn-outline-danger btn-sm" @click="removeGroup(g)">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </td>
+                </tr>
+
+                <tr v-if="filteredGroups.length === 0">
+                  <td colspan="7" class="text-center text-muted py-4">No groups</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Group -->
+    <div class="modal fade" id="groupModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-layer-group mr-2"></i> {{ isGroupEdit ? 'Edit Group' : 'New Group' }}
+            </h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Group Name <span class="text-danger">*</span></label>
+              <input class="form-control" v-model.trim="groupForm.name" placeholder="e.g. Size, Sugar, Add-ons">
+            </div>
+
+            <div class="form-group">
+              <label>Max Select <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" v-model.number="groupForm.max_select" min="1">
+              <small class="text-muted">1 = choose only 1, 99 = choose many (like add-ons)</small>
+            </div>
+
+            <div class="custom-control custom-switch mb-2">
+              <input type="checkbox" class="custom-control-input" id="grpRequired" v-model="groupForm.is_required">
+              <label class="custom-control-label" for="grpRequired">Required</label>
+            </div>
+
+            <div class="form-group">
+              <label>Sort Order</label>
+              <input type="number" class="form-control" v-model.number="groupForm.sort_order" min="0">
+            </div>
+
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="grpActive" v-model="groupForm.is_active">
+              <label class="custom-control-label" for="grpActive">Active</label>
+            </div>
+
+            <div v-if="groupError" class="alert alert-danger mt-3 py-2">{{ groupError }}</div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="saveGroup" :disabled="groupSaving">
+              <span v-if="groupSaving" class="spinner-border spinner-border-sm mr-2"></span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Values -->
+    <div class="modal fade" id="valuesModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-list mr-2"></i> Values — {{ currentGroup?.name || '' }}
+            </h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="d-flex align-items-center justify-content-between mb-2" style="gap:10px;">
+              <div class="d-flex align-items-center" style="gap:10px;">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input" id="valShowInactive"
+                         v-model="valuesIncludeInactive" @change="loadValues">
+                  <label class="custom-control-label" for="valShowInactive">Show inactive</label>
+                </div>
+
+                <input class="form-control form-control-sm" style="width:220px;"
+                       placeholder="Search value..." v-model="vq">
+              </div>
+
+              <button class="btn btn-primary btn-sm" @click="openCreateValue">
+                <i class="fas fa-plus"></i> New Value
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover table-sm">
+                <thead>
+                  <tr>
+                    <th style="width:70px;">#</th>
+                    <th>Name</th>
+                    <th style="width:140px;">Extra Price</th>
+                    <th style="width:90px;">Sort</th>
+                    <th style="width:120px;">Status</th>
+                    <th style="width:280px;">Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr v-for="v in filteredValues" :key="v.id">
+                    <td>{{ v.id }}</td>
+                    <td class="font-weight-bold">{{ v.name }}</td>
+                    <td>{{ formatMoney(v.extra_price) }}</td>
+                    <td>{{ v.sort_order }}</td>
+
+                    <td>
+                      <span class="badge" :class="v.is_active ? 'badge-success' : 'badge-secondary'">
+                        {{ v.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button class="btn btn-warning btn-sm mr-1" @click="openEditValue(v)">
+                        <i class="fas fa-edit"></i> Edit
+                      </button>
+
+                      <button class="btn btn-outline-secondary btn-sm mr-1" @click="toggleValue(v)">
+                        <i class="fas fa-power-off"></i> {{ v.is_active ? 'Disable' : 'Enable' }}
+                      </button>
+
+                      <button class="btn btn-outline-danger btn-sm" @click="removeValue(v)">
+                        <i class="fas fa-trash"></i> Delete
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr v-if="filteredValues.length===0">
+                    <td colspan="6" class="text-center text-muted py-4">No values</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Value form -->
+            <div class="border-top pt-3 mt-3">
+              <h6 class="mb-2">{{ isValueEdit ? 'Edit Value' : 'New Value' }}</h6>
+
+              <div class="row">
+                <div class="col-md-5">
+                  <div class="form-group">
+                    <label>Name <span class="text-danger">*</span></label>
+                    <input class="form-control" v-model.trim="valueForm.name" placeholder="e.g. Large / Add sausage">
+                  </div>
+                </div>
+
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label>Extra Price</label>
+                    <input type="number" class="form-control" v-model.number="valueForm.extra_price" step="0.01">
+                  </div>
+                </div>
+
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label>Sort</label>
+                    <input type="number" class="form-control" v-model.number="valueForm.sort_order" min="0">
+                  </div>
+                </div>
+
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label class="d-block">&nbsp;</label>
+                    <div class="custom-control custom-switch">
+                      <input type="checkbox" class="custom-control-input" id="valActive2" v-model="valueForm.is_active">
+                      <label class="custom-control-label" for="valActive2">Active</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="valueError" class="alert alert-danger py-2">{{ valueError }}</div>
+
+              <div class="d-flex justify-content-end" style="gap:10px;">
+                <button class="btn btn-light btn-sm" @click="resetValueForm">Clear</button>
+                <button class="btn btn-primary btn-sm" @click="saveValue" :disabled="valueSaving">
+                  <span v-if="valueSaving" class="spinner-border spinner-border-sm mr-2"></span>
+                  Save Value
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+</template>
+
+</body>
+</html>

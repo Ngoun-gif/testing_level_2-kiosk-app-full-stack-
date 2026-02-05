@@ -1,0 +1,42 @@
+<div class="svc-screen">
+  <button class="btn btn-outline-secondary svc-back" @click="goSplash">
+    Splash
+  </button>
+
+  <div class="svc-container">
+    <h1 class="svc-title">Where do you want to eat?</h1>
+    <p class="svc-subtitle">Choose Options</p>
+
+    <div class="svc-options">
+      <!-- Dine In -->
+      <div class="svc-card"
+           :class="{ selected: service === 'dine_in' }"
+           @click="selectService('dine_in')">
+        <div class="svc-icon">
+          <img src="./assets/service/dine_in.png" alt="Dine In">
+        </div>
+        <div class="svc-card-title">Dine In</div>
+        <div class="svc-card-desc">Enjoy your meal here</div>
+      </div>
+
+      <!-- Take Away -->
+      <div class="svc-card"
+           :class="{ selected: service === 'take_away' }"
+           @click="selectService('take_away')">
+        <div class="svc-icon">
+          <img src="./assets/service/take_away.png" alt="Take Away">
+        </div>
+        <div class="svc-card-title">Take Away</div>
+        <div class="svc-card-desc">Pack your order to go</div>
+      </div>
+    </div>
+
+    <div class="svc-actions">
+      <button class="btn btn-success svc-continue"
+              :disabled="!service"
+              @click="continueService">
+        Continue
+      </button>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,559 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- ✅ CSS -->
+  <link rel="stylesheet" href="./css/bootstrap.min.css">
+  <link rel="stylesheet" href="./css/kiosk.css">
+  <link rel="stylesheet" href="./css/splash.css">
+  <link rel="stylesheet" href="./css/service.css">
+  <link rel="stylesheet" href="./css/menu.css">
+  <link rel="stylesheet" href="./css/product-variant.css">
+  <link rel="stylesheet" href="./css/cart.css">
+
+  <link rel="stylesheet" href="./css/payment-method.css">
+  <link rel="stylesheet" href="./css/qr-code-payment.css">
+  <link rel="stylesheet" href="./css/counter-payment.css">
+  <link rel="stylesheet" href="./css/receipt.css">
+</head>
+
+<body class="bg-light">
+  <div id="kioskApp"></div>
+
+  <!-- templates injected here by kiosk_main.py -->
+
+  <!-- ✅ Vendor JS first -->
+  <script defer src="./assets/js/bootstrap.bundle.min.js"></script>
+
+  <!-- ✅ Vue (optional, safe to keep) -->
+  <script defer src="./assets/js/vue.global.prod.js"></script>
+
+  <!-- ✅ Core -->
+  <script defer src="./js/core/tpl.js"></script>
+  <script defer src="./js/core/api.js"></script>
+  <script defer src="./js/core/router.js"></script>
+  <script defer src="./js/core/utils.js"></script>
+
+
+  <!-- ✅ Modules -->
+  <script defer src="./js/modules/splash.js"></script>
+  <script defer src="./js/modules/service.js"></script>
+  <script defer src="./js/modules/menu.js"></script>
+  <script defer src="./js/modules/product-variant.js"></script>
+  <script defer src="./js/modules/cart.js"></script>
+  <script defer src="./js/modules/payment-method.js"></script>
+  <script defer src="./js/modules/pay-qr.js"></script>
+  <script defer src="./js/modules/pay-counter.js"></script>
+  <script defer src="./js/modules/receipt.js"></script>
+
+
+
+
+  <!-- later add: service.js, menu.js, product.js ... -->
+
+  <!-- ✅ Start app last -->
+  <script defer src="./app.js"></script>
+
+<template id="tpl-cart">
+
+  <div class="c2">
+
+    <div class="c2-header">
+      <div class="c2-header-title">Your Order</div>
+    </div>
+
+    <div class="c2-body">
+
+      <div class="c2-section-title">Your Items</div>
+
+      <div v-if="!lines.length" class="c2-empty">
+        Your cart is empty
+      </div>
+
+      <div v-else class="c2-list">
+
+        <div v-for="(it, idx) in lines" :key="idx" class="c2-item">
+
+          <div class="c2-left">
+            <div class="c2-thumb">
+              <img class="c2-img" :src="img(it)" @error="e => e.target.src='./assets/placeholder.png'" alt="">
+            </div>
+
+            <div class="c2-info">
+              <div class="c2-name">{{ it.name }}</div>
+
+              <!-- ✅ Variants grouped by group_name -->
+              <div v-if="it.variants && it.variants.length" class="c2-variants">
+                <div v-for="(vals, gname) in groupVariants(it.variants)" :key="gname" class="c2-vgroup">
+                  <div class="c2-vgname">{{ gname }}</div>
+
+                  <div class="c2-vitems">
+                    <div v-for="(v, vi) in vals" :key="vi" class="c2-var">
+                      • {{ v.value_name }}
+                      <span v-if="Number(v.extra_price || 0) > 0" class="c2-var-plus">
+                        (+{{ Number(v.extra_price).toFixed(2) }})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="c2-qtyrow">
+                <div class="c2-qtybox">
+                  <button class="c2-qtybtn" type="button" @click="decQty(idx)">−</button>
+                  <div class="c2-qtynum">{{ it.qty }}</div>
+                  <button class="c2-qtybtn" type="button" @click="incQty(idx)">+</button>
+                </div>
+
+                <button class="c2-edit" type="button" @click="editItem(idx)">Edit</button>
+                <button class="c2-remove" type="button" @click="removeItem(idx)">Remove</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="c2-right">
+            <div class="c2-price">$ {{ Number(it.line_total || 0).toFixed(2) }}</div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="c2-total-line" v-if="lines.length">
+        <span>Total</span>
+        <span class="c2-total-amount">$ {{ total.toFixed(2) }}</span>
+      </div>
+
+    </div>
+
+    <div class="c2-footer">
+      <button class="c2-back" type="button" @click="goMenu">Back</button>
+
+      <button class="c2-pay" type="button" :disabled="count === 0" @click="confirmOrder">
+        Pay
+      </button>
+    </div>
+
+  </div>
+
+</template>
+
+
+<template id="tpl-menu">
+<div class="m2">
+
+  <!-- TOP ICON CATEGORY ROW -->
+  <div class="m2-top">
+    <div class="m2-catbar">
+      <button v-for="c in safeCategories" :key="c.id" class="m2-cat"
+        :class="{ active: Number(store.catalog.categoryId) === Number(c.id) }" @click="selectCategory(c.id)"
+        type="button">
+        <img class="m2-catimg" :src="img(c)" @error="e=>e.target.src='./assets/placeholder.png'" alt="">
+        <div class="m2-catname">{{ c.name }}</div>
+      </button>
+    </div>
+  </div>
+
+  <!-- SUB CATEGORY PILL ROW -->
+  <div class="m2-subwrap">
+    <div class="m2-subbar">
+      <button v-for="s in safeSubCategories" :key="s.id" class="m2-pill"
+        :class="{ active: Number(store.catalog.subCategoryId) === Number(s.id) }" @click="selectSubCategory(s.id)"
+        type="button">
+        <img class="m2-pillicon" :src="img(s)" @error="e=>e.target.src='./assets/placeholder.png'" alt="">
+        <span>{{ s.name }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- PRODUCT GRID -->
+  <div class="m2-body">
+    <div class="m2-grid">
+      <button v-for="p in safeProducts" :key="p.id" class="m2-card" @click="openProduct(p)" type="button">
+        <div class="m2-prdimgwrap">
+          <img class="m2-prdimg" :src="img(p)" @error="e=>e.target.src='./assets/placeholder.png'" alt="">
+
+          <div v-if="(cartQtyByProduct[Number(p.id)] || 0) > 0" class="m2-prdbadge">
+            {{ cartQtyByProduct[Number(p.id)] }}
+          </div>
+        </div>
+
+        <div class="m2-prdname">{{ p.name }}</div>
+        <div class="m2-prdprice">$ {{ Number(p.base_price || 0).toFixed(2) }}</div>
+      </button>
+
+    </div>
+
+    <div v-if="!safeProducts.length && !store.loading" class="m2-empty">
+      No products
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="m2-footer">
+    <button class="m2-back" type="button" @click="goService">Back</button>
+
+    <div class="m2-total">
+      <div class="m2-total-label">Total</div>
+      <div class="m2-total-row">
+        <div class="m2-bubble">{{ count }}</div>
+        <div class="m2-total-amount">$ {{ total.toFixed(2) }}</div>
+      </div>
+    </div>
+
+    <button class="m2-checkout" type="button" :disabled="count===0" @click="goCheckout">
+      Checkout
+    </button>
+  </div>
+
+</div>
+</template>
+
+
+<template id="tpl-pay-counter">
+<div class="pqr">
+    <!-- header -->
+    <div class="pqr-header">
+        <button class="pqr-back" type="button" @click="back">← Back</button>
+        <div class="pqr-title">Counter Payment</div>
+        <div style="width:90px;"></div>
+    </div>
+
+    <div class="pqr-body">
+
+        <div class="pqr-panel">
+
+            <!-- FULL IMAGE AREA -->
+            <div class="pqr-poster pqr-poster-full">
+                <img class="pqr-img" src="./assets/payment-counter/counter-cashier.png" alt="QR Payment"
+                    @error="e=>e.target.src='./assets/placeholder.png'">
+            </div>
+
+            <!-- TIPS CONTAINER (BOTTOM) -->
+
+
+        </div>
+        <div class="pqr-tips-wrap">
+            <div class="pqr-tips">
+                <div class="pqr-tip">
+                    <div class="pqr-tip-title">Tip 1 : Go to cashier and tell your order.</div>
+
+                    <div class="pqr-tip-title">Tip 2 : After payment, press “Print Receipt".</div>
+
+                    <div class="pqr-tip-title">Tip 3 : Cashier will verify the transaction manually.</div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- total -->
+        <div class="pqr-total">
+            <div class="pqr-total-label">Order Total</div>
+            <div class="pqr-total-amount">$ {{ total.toFixed(2) }}</div>
+        </div>
+
+        <!-- actions -->
+        <div class="pqr-actions">
+            <button class="pqr-btn pqr-print" type="button" :disabled="count===0 || printing" @click="printReceipt">
+                <span v-if="printing" class="pqr-spin"></span>
+                Print Receipt
+            </button>
+
+           
+        </div>
+
+    </div>
+</div>
+</template>
+
+
+<template id="tpl-payment-method">
+
+    <div id="payment-method" class="pm1">
+
+        <div class="pm1-wrap">
+
+            <div class="pm1-title">Select Payment Method</div>
+            <div class="pm1-sub">Choose how you would like to pay for your order</div>
+
+            <!-- OPTIONS -->
+            <div class="pm1-grid">
+
+                <!-- COUNTER -->
+                <button class="pm1-card" :class="{ selected: selected === 'counter' }" type="button"
+                    @click="select('counter')">
+                    <div class="pm1-icon">
+                        <img src="./assets/payment-method/counter_payment.png" alt="Pay at Counter">
+                    </div>
+                    <div class="pm1-card-title">Pay at Counter</div>
+                    <div class="pm1-card-desc">Pay with cash or card at the counter</div>
+                </button>
+
+                <!-- QR -->
+                <button class="pm1-card" :class="{ selected: selected === 'qrcode' }" type="button"
+                    @click="select('qrcode')">
+                    <div class="pm1-icon">
+                        <img src="./assets/payment-method/qr_payment.png" alt="Scan QR Code">
+                    </div>
+                    <div class="pm1-card-title">Scan QR Code</div>
+                    <div class="pm1-card-desc">Pay now with ABA and other banks using Bakong</div>
+                </button>
+
+            </div>
+
+            <!-- TOTAL -->
+            <div class="pm1-total">
+                <div class="pm1-total-label">Order Total</div>
+                <div class="pm1-total-amount">$ {{ total.toFixed(2) }}</div>
+            </div>
+
+            <!-- ACTIONS -->
+            <div class="pm1-actions">
+                <button class="pm1-continue" type="button" @click="continueNext" :disabled="count===0">
+                    Continue
+                </button>
+
+                <button class="pm1-back" type="button" @click="back">
+                    Back
+                </button>
+            </div>
+
+        </div>
+
+    </div>
+
+</template>
+
+
+<template id="tpl-payment-qr">
+<div class="pqr">
+    <!-- header -->
+    <div class="pqr-header">
+        <button class="pqr-back" type="button" @click="back">← Back</button>
+        <div class="pqr-title">QR Payment</div>
+        <div style="width:90px;"></div>
+    </div>
+
+    <div class="pqr-body">
+
+        <div class="pqr-panel">
+
+            <!-- FULL IMAGE AREA -->
+            <div class="pqr-poster pqr-poster-full">
+                <img class="pqr-img pqr-img-full" src="./assets/payment-qr/aba_khim.png" alt="QR Payment"
+                    @error="e=>e.target.src='./assets/placeholder.png'">
+            </div>
+
+            <!-- TIPS CONTAINER (BOTTOM) -->
+            
+
+        </div>
+        <div class="pqr-tips-wrap">
+            <div class="pqr-tips">
+                <div class="pqr-tip">
+                    <div class="pqr-tip-title">Tip 1 : Open your bank app → Scan QR → Confirm payment.</div>
+                
+                    <div class="pqr-tip-title">Tip 2 : After payment, press “Print Receipt".</div>
+                  
+                    <div class="pqr-tip-title">Tip 3 : Cashier will verify the transaction manually.</div>
+                   
+                </div>
+            </div>
+        </div>
+
+        <!-- total -->
+        <div class="pqr-total">
+            <div class="pqr-total-label">Order Total</div>
+            <div class="pqr-total-amount">$ {{ total.toFixed(2) }}</div>
+        </div>
+
+        <!-- actions -->
+        <div class="pqr-actions">
+            <button class="pqr-btn pqr-print" type="button" :disabled="count===0 || printing" @click="printReceipt">
+                <span v-if="printing" class="pqr-spin"></span>
+                Print Receipt
+            </button>
+
+           
+        </div>
+
+    </div>
+</div>
+</template>
+
+
+<template id="tpl-product-variant">
+<div class="pv2">
+  <!-- TOP YELLOW HEADER -->
+  <div class="pv2-top">
+    <button class="pv2-discard" type="button" @click="cancel">✕ <span>Discard</span></button>
+    <div class="pv2-title">{{ product?.name || 'Product' }}</div>
+  </div>
+
+  <!-- IMAGE CENTER -->
+  <div class="pv2-hero">
+    <div class="pv2-imgcard">
+      <img class="pv2-img" :src="img(product)" @error="e => e.target.src='./assets/placeholder.png'" alt="">
+    </div>
+  </div>
+
+  <!-- OPTIONS -->
+  <div class="pv2-body" :key="renderTick">
+    <div v-for="g in groups" :key="g.id" class="pv2-group">
+      <div class="pv2-grouphead">
+        <div class="pv2-groupname">{{ g.name }}</div>
+        <span v-if="g.is_required" class="pv2-required">Required</span>
+      </div>
+
+      <div class="pv2-grid">
+        <button v-for="v in (valuesByGroup[g.id] || [])" :key="v.id" class="pv2-opt"
+          :class="{ active: isSelected(g.id, v.id) }" type="button" @click.stop="toggleValue(g, v)">
+          <span class="pv2-optname">{{ v.name }}</span>
+
+          <span v-if="Number(v.extra_price || 0) > 0" class="pv2-extra">
+            + $ {{ Number(v.extra_price).toFixed(2) }}
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING QTY -->
+  <div class="pv2-qty">
+    <button class="pv2-qtybtn" type="button" @click="decQty">−</button>
+    <div class="pv2-qtynum">{{ qty }}</div>
+    <button class="pv2-qtybtn" type="button" @click="incQty">+</button>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="pv2-bottom">
+    <div class="pv2-totalbox">
+      <div class="pv2-total-label">Selection</div>
+      <div class="pv2-total">$ {{ lineTotal.toFixed(2) }}</div>
+    </div>
+
+    <button class="pv2-add" type="button" @click="addToCart">
+      Add to cart
+    </button>
+  </div>
+</div>
+</template>
+
+
+<template id="tpl-receipt">
+<div class="rcp">
+    <div class="rcp-card">
+        <div class="rcp-icon">✅</div>
+        <div class="rcp-title">Receipt Printed</div>
+
+        <div class="rcp-sub">
+            Please take your receipt.<br>
+            Returning to splash in <b>{{ secondsLeft }}</b>s…
+        </div>
+
+        <div class="rcp-actions">
+            <button class="btn btn-success btn-lg" @click="done">Done</button>
+            <button class="btn btn-outline-secondary btn-lg" @click="backNow">Back Now</button>
+        </div>
+    </div>
+</div>
+</template>
+
+
+<template id="tpl-service">
+<div class="svc-screen">
+  <button class="btn btn-outline-secondary svc-back" @click="goSplash">
+    Splash
+  </button>
+
+  <div class="svc-container">
+    <h1 class="svc-title">Where do you want to eat?</h1>
+    <p class="svc-subtitle">Choose Options</p>
+
+    <div class="svc-options">
+      <!-- Dine In -->
+      <div class="svc-card"
+           :class="{ selected: service === 'dine_in' }"
+           @click="selectService('dine_in')">
+        <div class="svc-icon">
+          <img src="./assets/service/dine_in.png" alt="Dine In">
+        </div>
+        <div class="svc-card-title">Dine In</div>
+        <div class="svc-card-desc">Enjoy your meal here</div>
+      </div>
+
+      <!-- Take Away -->
+      <div class="svc-card"
+           :class="{ selected: service === 'take_away' }"
+           @click="selectService('take_away')">
+        <div class="svc-icon">
+          <img src="./assets/service/take_away.png" alt="Take Away">
+        </div>
+        <div class="svc-card-title">Take Away</div>
+        <div class="svc-card-desc">Pack your order to go</div>
+      </div>
+    </div>
+
+    <div class="svc-actions">
+      <button class="btn btn-success svc-continue"
+              :disabled="!service"
+              @click="continueService">
+        Continue
+      </button>
+    </div>
+  </div>
+</div>
+
+</template>
+
+
+<template id="tpl-splash">
+<div class="splash-wrap">
+
+  <div id="splashCarousel"
+       class="carousel slide carousel-fade vh-100"
+       data-bs-touch="false"
+       data-bs-pause="false">
+
+    <div class="carousel-inner vh-100">
+      <div class="carousel-item active vh-100">
+        <img src="./assets/splash/1.png" class="d-block w-100 splash-img" alt="1">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/2.png" class="d-block w-100 splash-img" alt="2">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/3.png" class="d-block w-100 splash-img" alt="3">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/4.png" class="d-block w-100 splash-img" alt="4">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/5.png" class="d-block w-100 splash-img" alt="5">
+      </div>
+    </div>
+
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="0" class="active"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="1"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="2"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="3"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="4"></button>
+    </div>
+  </div>
+
+  <div class="splash-bottom d-flex justify-content-center align-items-center">
+    <button class="btn btn-primary btn-lg w-50 py-3 fw-bold"
+            @click="goService">
+      Order Now
+    </button>
+  </div>
+
+</div>
+
+</template>
+
+</body>
+</html>

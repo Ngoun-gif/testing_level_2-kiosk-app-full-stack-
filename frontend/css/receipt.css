@@ -1,0 +1,98 @@
+/* ===============================
+   RECEIPT SCREEN – KIOSK MODE
+   Resolution: 1080 x 1920
+   =============================== */
+
+.rcp {
+    width: 100vw;
+    height: 100vh;
+    background: #f6f7f9;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Main card */
+.rcp-card {
+    width: 860px;
+    /* fixed kiosk width */
+    max-width: 90vw;
+    background: #ffffff;
+
+    border-radius: 28px;
+    padding: 80px 60px;
+
+    text-align: center;
+
+    box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.12);
+}
+
+/* Icon */
+.rcp-icon {
+    font-size: 96px;
+    margin-bottom: 30px;
+}
+
+/* Title */
+.rcp-title {
+    font-size: 56px;
+    font-weight: 900;
+    color: #111;
+    margin-bottom: 24px;
+}
+
+/* Subtitle */
+.rcp-sub {
+    font-size: 30px;
+    line-height: 1.5;
+    color: #555;
+    margin-bottom: 60px;
+}
+
+.rcp-sec {
+    font-size: 34px;
+    font-weight: 800;
+    color: #111;
+    padding: 0 6px;
+}
+
+/* Buttons */
+.rcp-actions {
+    display: flex;
+    gap: 28px;
+    justify-content: center;
+}
+
+/* Base button */
+.rcp-btn {
+    min-width: 260px;
+    height: 90px;
+
+    font-size: 28px;
+    font-weight: 700;
+
+    border-radius: 18px;
+    border: none;
+
+    cursor: pointer;
+    transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.rcp-btn:active {
+    transform: scale(0.98);
+}
+
+/* Primary */
+.rcp-btn-primary {
+    background: #16a34a;
+    color: #fff;
+    box-shadow: 0 10px 30px rgba(22, 163, 74, 0.4);
+}
+
+/* Secondary */
+.rcp-btn-secondary {
+    background: #e5e7eb;
+    color: #111;
+}

@@ -1,0 +1,316 @@
+<!-- dashboard/pages/variant.html -->
+
+  <div class="row">
+    <div class="col-12">
+      <div class="card card-outline card-primary">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">
+            <i class="fas fa-sliders-h mr-2"></i> Variants (Groups & Values)
+          </h3>
+
+          <div class="d-flex align-items-center" style="gap:10px;">
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="vgShowInactive"
+                     v-model="includeInactive" @change="loadGroups">
+              <label class="custom-control-label" for="vgShowInactive">Show inactive</label>
+            </div>
+
+            <button class="btn btn-primary btn-sm" @click="openCreateGroup" :disabled="productId===0">
+              <i class="fas fa-plus"></i> New Group
+            </button>
+          </div>
+        </div>
+
+        <div class="card-body">
+          <!-- Filters -->
+          <div class="row mb-2">
+            <div class="col-md-3 mb-2 mb-md-0">
+              <select class="form-control form-control-sm" v-model.number="categoryId" @change="onChangeCategory">
+                <option :value="0">-- Select Category --</option>
+                <option v-for="c in (categories||[])" :key="c.id" :value="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-3 mb-2 mb-md-0">
+              <select class="form-control form-control-sm" v-model.number="subCategoryId" @change="onChangeSubCategory" :disabled="categoryId===0">
+                <option :value="0">-- Select Sub-Category --</option>
+                <option v-for="sc in (subCategories||[])" :key="sc.id" :value="sc.id">{{ sc.name }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-4 mb-2 mb-md-0">
+              <select class="form-control form-control-sm" v-model.number="productId" @change="loadGroups" :disabled="subCategoryId===0">
+                <option :value="0">-- Select Product --</option>
+                <option v-for="p in (products||[])" :key="p.id" :value="p.id">{{ p.name }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-2">
+              <input class="form-control form-control-sm" placeholder="Search group..."
+                     v-model="q">
+            </div>
+          </div>
+
+          <div v-if="productId===0" class="alert alert-info py-2">
+            Please select a product first.
+          </div>
+
+          <!-- Group table -->
+          <div v-else class="table-responsive">
+            <table class="table table-bordered table-hover table-sm">
+              <thead>
+                <tr>
+                  <th style="width:70px;">#</th>
+                  <th>Name</th>
+                  <th style="width:110px;">Required</th>
+                  <th style="width:120px;">Max Select</th>
+                  <th style="width:90px;">Sort</th>
+                  <th style="width:120px;">Status</th>
+                  <th style="width:360px;">Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                <tr v-for="g in filteredGroups" :key="g.id">
+                  <td>{{ g.id }}</td>
+                  <td class="font-weight-bold">{{ g.name }}</td>
+
+                  <td>
+                    <span class="badge" :class="g.is_required ? 'badge-info' : 'badge-light'">
+                      {{ g.is_required ? 'YES' : 'NO' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <span class="badge badge-light">{{ g.max_select }}</span>
+                    <small class="text-muted ml-1">
+                      {{ g.max_select == 1 ? '(single)' : '(multi)' }}
+                    </small>
+                  </td>
+
+                  <td>{{ g.sort_order }}</td>
+
+                  <td>
+                    <span class="badge" :class="g.is_active ? 'badge-success' : 'badge-secondary'">
+                      {{ g.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                    </span>
+                  </td>
+
+                  <td>
+                    <button class="btn btn-info btn-sm mr-1" @click="openValues(g)">
+                      <i class="fas fa-list"></i> Values
+                    </button>
+
+                    <button class="btn btn-warning btn-sm mr-1" @click="openEditGroup(g)">
+                      <i class="fas fa-edit"></i> Edit
+                    </button>
+
+                    <button class="btn btn-outline-secondary btn-sm mr-1" @click="toggleGroup(g)">
+                      <i class="fas fa-power-off"></i> {{ g.is_active ? 'Disable' : 'Enable' }}
+                    </button>
+
+                    <button class="btn btn-outline-danger btn-sm" @click="removeGroup(g)">
+                      <i class="fas fa-trash"></i> Delete
+                    </button>
+                  </td>
+                </tr>
+
+                <tr v-if="filteredGroups.length === 0">
+                  <td colspan="7" class="text-center text-muted py-4">No groups</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Group -->
+    <div class="modal fade" id="groupModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-md" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-layer-group mr-2"></i> {{ isGroupEdit ? 'Edit Group' : 'New Group' }}
+            </h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Group Name <span class="text-danger">*</span></label>
+              <input class="form-control" v-model.trim="groupForm.name" placeholder="e.g. Size, Sugar, Add-ons">
+            </div>
+
+            <div class="form-group">
+              <label>Max Select <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" v-model.number="groupForm.max_select" min="1">
+              <small class="text-muted">1 = choose only 1, 99 = choose many (like add-ons)</small>
+            </div>
+
+            <div class="custom-control custom-switch mb-2">
+              <input type="checkbox" class="custom-control-input" id="grpRequired" v-model="groupForm.is_required">
+              <label class="custom-control-label" for="grpRequired">Required</label>
+            </div>
+
+            <div class="form-group">
+              <label>Sort Order</label>
+              <input type="number" class="form-control" v-model.number="groupForm.sort_order" min="0">
+            </div>
+
+            <div class="custom-control custom-switch">
+              <input type="checkbox" class="custom-control-input" id="grpActive" v-model="groupForm.is_active">
+              <label class="custom-control-label" for="grpActive">Active</label>
+            </div>
+
+            <div v-if="groupError" class="alert alert-danger mt-3 py-2">{{ groupError }}</div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" @click="saveGroup" :disabled="groupSaving">
+              <span v-if="groupSaving" class="spinner-border spinner-border-sm mr-2"></span>
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Values -->
+    <div class="modal fade" id="valuesModal" tabindex="-1" role="dialog" aria-hidden="true">
+      <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-list mr-2"></i> Values — {{ currentGroup?.name || '' }}
+            </h5>
+            <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+          </div>
+
+          <div class="modal-body">
+            <div class="d-flex align-items-center justify-content-between mb-2" style="gap:10px;">
+              <div class="d-flex align-items-center" style="gap:10px;">
+                <div class="custom-control custom-switch">
+                  <input type="checkbox" class="custom-control-input" id="valShowInactive"
+                         v-model="valuesIncludeInactive" @change="loadValues">
+                  <label class="custom-control-label" for="valShowInactive">Show inactive</label>
+                </div>
+
+                <input class="form-control form-control-sm" style="width:220px;"
+                       placeholder="Search value..." v-model="vq">
+              </div>
+
+              <button class="btn btn-primary btn-sm" @click="openCreateValue">
+                <i class="fas fa-plus"></i> New Value
+              </button>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-bordered table-hover table-sm">
+                <thead>
+                  <tr>
+                    <th style="width:70px;">#</th>
+                    <th>Name</th>
+                    <th style="width:140px;">Extra Price</th>
+                    <th style="width:90px;">Sort</th>
+                    <th style="width:120px;">Status</th>
+                    <th style="width:280px;">Action</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr v-for="v in filteredValues" :key="v.id">
+                    <td>{{ v.id }}</td>
+                    <td class="font-weight-bold">{{ v.name }}</td>
+                    <td>{{ formatMoney(v.extra_price) }}</td>
+                    <td>{{ v.sort_order }}</td>
+
+                    <td>
+                      <span class="badge" :class="v.is_active ? 'badge-success' : 'badge-secondary'">
+                        {{ v.is_active ? 'ACTIVE' : 'INACTIVE' }}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button class="btn btn-warning btn-sm mr-1" @click="openEditValue(v)">
+                        <i class="fas fa-edit"></i> Edit
+                      </button>
+
+                      <button class="btn btn-outline-secondary btn-sm mr-1" @click="toggleValue(v)">
+                        <i class="fas fa-power-off"></i> {{ v.is_active ? 'Disable' : 'Enable' }}
+                      </button>
+
+                      <button class="btn btn-outline-danger btn-sm" @click="removeValue(v)">
+                        <i class="fas fa-trash"></i> Delete
+                      </button>
+                    </td>
+                  </tr>
+
+                  <tr v-if="filteredValues.length===0">
+                    <td colspan="6" class="text-center text-muted py-4">No values</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Value form -->
+            <div class="border-top pt-3 mt-3">
+              <h6 class="mb-2">{{ isValueEdit ? 'Edit Value' : 'New Value' }}</h6>
+
+              <div class="row">
+                <div class="col-md-5">
+                  <div class="form-group">
+                    <label>Name <span class="text-danger">*</span></label>
+                    <input class="form-control" v-model.trim="valueForm.name" placeholder="e.g. Large / Add sausage">
+                  </div>
+                </div>
+
+                <div class="col-md-3">
+                  <div class="form-group">
+                    <label>Extra Price</label>
+                    <input type="number" class="form-control" v-model.number="valueForm.extra_price" step="0.01">
+                  </div>
+                </div>
+
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label>Sort</label>
+                    <input type="number" class="form-control" v-model.number="valueForm.sort_order" min="0">
+                  </div>
+                </div>
+
+                <div class="col-md-2">
+                  <div class="form-group">
+                    <label class="d-block">&nbsp;</label>
+                    <div class="custom-control custom-switch">
+                      <input type="checkbox" class="custom-control-input" id="valActive2" v-model="valueForm.is_active">
+                      <label class="custom-control-label" for="valActive2">Active</label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="valueError" class="alert alert-danger py-2">{{ valueError }}</div>
+
+              <div class="d-flex justify-content-end" style="gap:10px;">
+                <button class="btn btn-light btn-sm" @click="resetValueForm">Clear</button>
+                <button class="btn btn-primary btn-sm" @click="saveValue" :disabled="valueSaving">
+                  <span v-if="valueSaving" class="spinner-border spinner-border-sm mr-2"></span>
+                  Save Value
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+

@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="./css/bootstrap.min.css">
+  <link rel="stylesheet" href="./css/kiosk.css">
+  <link rel="stylesheet" href="./css/splash.css">
+</head>
+
+<body class="bg-light">
+
+  <div id="app"></div>
+
+  <!-- templates injected here by kiosk_main.py -->
+
+  <!-- scripts (order matters) -->
+  <script src="./js/bootstrap.bundle.min.js"></script>
+
+  <script src="./js/core/state.js"></script>
+  <script src="./js/core/ui.js"></script>
+  <script src="./js/core/api.js"></script>
+  <script src="./js/core/router.js"></script>
+
+  <script src="./js/modules/splash.js"></script>
+  <script src="./js/modules/service.js"></script>
+  <script src="./js/modules/menu.js"></script>
+
+  <script src="./app.js"></script>
+<template id="tpl-menu">
+  <div class="p-3">
+    <div class="d-flex justify-content-between align-items-center">
+      <h4 class="m-0">Menu</h4>
+      <button class="btn btn-outline-secondary" onclick="goService()">Service</button>
+    </div>
+
+    <div id="productGrid" class="text-muted mt-3">
+      No data yet
+    </div>
+  </div>
+</template>
+
+<template id="tpl-service">
+  <div class="vh-100 d-flex align-items-center justify-content-center">
+    <div class="card p-4 shadow-sm" style="width: min(520px, 92vw); border-radius: 18px;">
+      <h4 class="mb-3 text-center">Select Service</h4>
+
+      <div class="d-grid gap-3">
+        <button class="btn btn-primary btn-lg py-3" onclick="chooseService('dine_in')">
+          Dine In
+        </button>
+        <button class="btn btn-outline-primary btn-lg py-3" onclick="chooseService('takeaway')">
+          Take Away
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<template id="tpl-splash">
+  <div style="padding:24px;font-size:28px;">
+    SPLASH TEMPLATE OK ✅
+  </div>
+</template>
+
+</body>
+</html>

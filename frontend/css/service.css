@@ -1,0 +1,118 @@
+/* ===== Service Screen - Match Photo ===== */
+.svc-screen{
+  min-height: 100vh;
+  background: #faf7f2; /* cream */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 16px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.svc-back{
+  position: absolute;
+  top: 16px;
+  left: 16px;
+}
+
+.svc-container{
+  width: min(980px, 92vw);
+  text-align: center;
+}
+
+.svc-title{
+  margin: 0 0 8px;
+  font-size: clamp(36px, 4vw, 54px);
+  font-weight: 800;
+  letter-spacing: .2px;
+  color: #1b1b1b; /* strong blue */
+}
+
+.svc-subtitle{
+  margin: 0 0 42px;
+  font-size: clamp(16px, 1.7vw, 22px);
+  color: #6b7280; /* gray */
+}
+
+.svc-options{
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+/* card */
+.svc-card{
+  width: min(420px, 92vw);
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 44px 28px;
+  cursor: pointer;
+  border: 2px solid rgba(0,0,0,0.04);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.06);
+  transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+}
+
+.svc-card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(0,0,0,0.08);
+}
+
+/* ✅ selected payment method: yellow theme */
+.svc-card.selected {
+  border: 3px solid #f59e0b;
+  /* strong yellow */
+  background: #fff7cc;
+  /* soft yellow */
+  box-shadow: 0 18px 40px rgba(245, 158, 11, 0.25);
+}
+
+.svc-icon{
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 22px;
+  border-radius: 18px;
+  background: #f3f4f6; /* light gray square */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.svc-icon img{
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+}
+
+.svc-card-title{
+  font-size: 28px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.svc-card-desc{
+  font-size: 18px;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+/* optional action button */
+.svc-actions{
+  margin-top: 34px;
+  display: flex;
+  justify-content: center;
+}
+
+.svc-continue{
+  font-size: 22px;
+  padding: 16px 28px;
+  border-radius: 14px;
+}
+
+/* small screens */
+@media (max-width: 900px){
+  .svc-options{ gap: 22px; }
+  .svc-card{ padding: 34px 22px; }
+}

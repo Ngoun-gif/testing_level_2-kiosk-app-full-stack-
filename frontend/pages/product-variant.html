@@ -1,0 +1,54 @@
+<div class="pv2">
+  <!-- TOP YELLOW HEADER -->
+  <div class="pv2-top">
+    <button class="pv2-discard" type="button" @click="cancel">✕ <span>Discard</span></button>
+    <div class="pv2-title">{{ product?.name || 'Product' }}</div>
+  </div>
+
+  <!-- IMAGE CENTER -->
+  <div class="pv2-hero">
+    <div class="pv2-imgcard">
+      <img class="pv2-img" :src="img(product)" @error="e => e.target.src='./assets/placeholder.png'" alt="">
+    </div>
+  </div>
+
+  <!-- OPTIONS -->
+  <div class="pv2-body" :key="renderTick">
+    <div v-for="g in groups" :key="g.id" class="pv2-group">
+      <div class="pv2-grouphead">
+        <div class="pv2-groupname">{{ g.name }}</div>
+        <span v-if="g.is_required" class="pv2-required">Required</span>
+      </div>
+
+      <div class="pv2-grid">
+        <button v-for="v in (valuesByGroup[g.id] || [])" :key="v.id" class="pv2-opt"
+          :class="{ active: isSelected(g.id, v.id) }" type="button" @click.stop="toggleValue(g, v)">
+          <span class="pv2-optname">{{ v.name }}</span>
+
+          <span v-if="Number(v.extra_price || 0) > 0" class="pv2-extra">
+            + $ {{ Number(v.extra_price).toFixed(2) }}
+          </span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING QTY -->
+  <div class="pv2-qty">
+    <button class="pv2-qtybtn" type="button" @click="decQty">−</button>
+    <div class="pv2-qtynum">{{ qty }}</div>
+    <button class="pv2-qtybtn" type="button" @click="incQty">+</button>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="pv2-bottom">
+    <div class="pv2-totalbox">
+      <div class="pv2-total-label">Selection</div>
+      <div class="pv2-total">$ {{ lineTotal.toFixed(2) }}</div>
+    </div>
+
+    <button class="pv2-add" type="button" @click="addToCart">
+      Add to cart
+    </button>
+  </div>
+</div>

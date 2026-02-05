@@ -1,0 +1,47 @@
+/* =========================
+   CATEGORY (FULL) - CSS
+   Bootstrap-proof yellow active
+   ========================= */
+
+/* base */
+button.category-btn {
+    border-radius: 14px;
+    transition: all 0.15s ease;
+    background: transparent;
+    border: 2px solid transparent;
+}
+
+/* ✅ ACTIVE (Yellow) */
+button.category-btn.category-active {
+    background: #fff7cc !important;
+    /* soft yellow */
+    border: 2px solid #f59e0b !important;
+    /* strong yellow */
+}
+
+/* normal text */
+button.category-btn .category-item {
+    color: #111 !important;
+    font-weight: 600;
+    text-decoration: none !important;
+}
+
+/* active text */
+button.category-btn.category-active .category-item {
+    color: #f59e0b !important;
+    font-weight: 800 !important;
+}
+
+/* icon highlight */
+button.category-btn.category-active .cat-icon {
+    transform: scale(1.08);
+}
+
+button.category-btn.category-active .cat-icon img {
+    filter: drop-shadow(0 4px 6px rgba(245, 158, 11, 0.45));
+}
+
+/* optional hover */
+button.category-btn:hover {
+    background: #fef3c7;
+}

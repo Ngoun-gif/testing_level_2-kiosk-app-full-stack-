@@ -1,0 +1,42 @@
+<div class="splash-wrap">
+
+  <div id="splashCarousel"
+       class="carousel slide carousel-fade vh-100"
+       data-bs-touch="false"
+       data-bs-pause="false">
+
+    <div class="carousel-inner vh-100">
+      <div class="carousel-item active vh-100">
+        <img src="./assets/splash/1.png" class="d-block w-100 splash-img" alt="1">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/2.png" class="d-block w-100 splash-img" alt="2">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/3.png" class="d-block w-100 splash-img" alt="3">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/4.png" class="d-block w-100 splash-img" alt="4">
+      </div>
+      <div class="carousel-item vh-100">
+        <img src="./assets/splash/5.png" class="d-block w-100 splash-img" alt="5">
+      </div>
+    </div>
+
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="0" class="active"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="1"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="2"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="3"></button>
+      <button type="button" data-bs-target="#splashCarousel" data-bs-slide-to="4"></button>
+    </div>
+  </div>
+
+  <div class="splash-bottom d-flex justify-content-center align-items-center">
+    <button class="btn btn-primary btn-lg w-50 py-3 fw-bold"
+            @click="goService">
+      Order Now
+    </button>
+  </div>
+
+</div>
