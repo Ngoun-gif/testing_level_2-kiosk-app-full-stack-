@@ -52,9 +52,9 @@ Kiosk.receiptPayload.fromOrder = function (order) {
   // Remark (requested): pay to counter / scan qr
   const remark =
     String(payment_type).toLowerCase() === "counter"
-      ? "Remark: Pay to Counter"
+      ? "Remark: Please Pay to Counter"
       : String(payment_type).toLowerCase() === "qr"
-      ? "Remark: Scan QR to Pay"
+      ? "Remark: Payment via QR Code Already"
       : "";
 
   return {
