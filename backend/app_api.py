@@ -7,6 +7,10 @@ from backend.controllers.product_controller import ProductController
 from backend.controllers.variant_group_controller import VariantGroupController
 from backend.controllers.variant_value_controller import VariantValueController
 from backend.controllers.kiosk_menu_controller import KioskMenuController
+from backend.controllers.session_controller import SessionController
+from backend.controllers.order_controller import OrderController
+
+
 
 from backend.receipt_printer import ReceiptPrinter
 
@@ -27,9 +31,12 @@ class AppApi:
         self.variant_group = VariantGroupController()
         self.variant_value = VariantValueController()
         self.kiosk_menu = KioskMenuController()
+        self.session = SessionController(minutes=7)
+        self.order = OrderController()
 
         # printer (dev + exe supported inside ReceiptPrinter)
         self.receipt = ReceiptPrinter()
+
 
     # =========================
     # Receipt Printing
@@ -145,3 +152,40 @@ class AppApi:
     # =========================
     def kiosk_menu_all(self):
         return self.kiosk_menu.load_all()
+
+
+    # =========================
+    # Session (Level 2)
+    # =========================
+    def session_start(self):
+        return self.session.start()
+
+    def session_touch(self, session_key):
+        return self.session.touch(session_key or "")
+
+    def session_status(self, session_key):
+        return self.session.status(session_key or "")
+
+    def session_close(self, session_key):
+        return self.session.close(session_key or "")
+
+    # =========================
+    # Orders (Level 2)
+    # =========================
+    def order_create_from_cart(self, payload):
+        return self.order.create_from_cart(payload or {})
+
+    def order_set_payment_type(self, order_id, payment_type):
+        return self.order.set_payment_type(int(order_id), str(payment_type))
+
+    def order_mark_paid(self, order_id):
+        return self.order.mark_paid(int(order_id))
+
+    def order_mark_printed(self, order_id):
+        return self.order.mark_printed(int(order_id))
+
+    def order_cancel(self, order_id):
+        return self.order.cancel(int(order_id))
+
+    def order_get_full(self, order_id):
+        return self.order.get_full(int(order_id))

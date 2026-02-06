@@ -17,6 +17,7 @@ Kiosk.modules["cart"] = {
       return (this.router.state.cart || []).filter(Boolean);
     },
 
+    // UI total only (backend recomputes official total)
     total() {
       const cart = this.router.state.cart || [];
       return cart.reduce((sum, i) => sum + Number(i?.line_total || 0), 0);
@@ -29,39 +30,33 @@ Kiosk.modules["cart"] = {
   },
 
   methods: {
-    // ✅ EXE-safe image resolver: prefer image_url
     img(lineOrPath) {
       if (!lineOrPath) return "./assets/placeholder.png";
 
       let url = "";
-      if (typeof lineOrPath === "string") {
-        url = lineOrPath;
-      } else if (typeof lineOrPath === "object") {
+      if (typeof lineOrPath === "string") url = lineOrPath;
+      else if (typeof lineOrPath === "object") {
         url = lineOrPath.image_url || lineOrPath.imageUrl || lineOrPath.image_path || "";
       }
 
       if (!url) return "./assets/placeholder.png";
 
-      if (String(url).startsWith("file:///")) {
-        return String(url) + "?v=" + this.renderTick;
-      }
+      if (String(url).startsWith("file:///")) return String(url) + "?v=" + this.renderTick;
 
       const clean = String(url).replace(/^\/+/, "");
       return "./" + clean + "?v=" + this.renderTick;
     },
 
-    // ✅ Group variants by group_name (for cart UI)
     groupVariants(variants) {
       const map = {};
-      (variants || []).forEach(v => {
+      (variants || []).forEach((v) => {
         const g = v.group_name || "Options";
         if (!map[g]) map[g] = [];
         map[g].push(v);
       });
 
-      // optional: keep stable order by group_name
       const ordered = {};
-      Object.keys(map).sort().forEach(k => ordered[k] = map[k]);
+      Object.keys(map).sort().forEach((k) => (ordered[k] = map[k]));
       return ordered;
     },
 
@@ -70,6 +65,7 @@ Kiosk.modules["cart"] = {
     },
 
     _recalcLine(line) {
+      // UI-only recalc. Backend recomputes official total.
       const base = Number(line.base_price || 0);
       const extras = (line.variants || []).reduce((s, v) => s + Number(v.extra_price || 0), 0);
       line.line_total = (base + extras) * Number(line.qty || 1);
@@ -82,7 +78,6 @@ Kiosk.modules["cart"] = {
 
       line.qty = Math.min(99, Number(line.qty || 1) + 1);
       this._recalcLine(line);
-
       this.router.state.cart = cart;
     },
 
@@ -93,7 +88,6 @@ Kiosk.modules["cart"] = {
 
       line.qty = Math.max(1, Number(line.qty || 1) - 1);
       this._recalcLine(line);
-
       this.router.state.cart = cart;
     },
 
@@ -117,9 +111,47 @@ Kiosk.modules["cart"] = {
       this.router.go("product-variant");
     },
 
-    confirmOrder() {
+    async confirmOrder() {
       if (this.count === 0) return;
-      this.router.go("payment-method");
+
+      if (!this.router.state.service) {
+        this.router.setFooter("Please select service first");
+        this.router.go("service");
+        return;
+      }
+
+      try {
+        // ✅ SAFE payload: only ids + qty (no prices/names)
+        const items = (this.router.state.cart || [])
+          .filter(Boolean)
+          .map((line) => ({
+            product_id: Number(line.product_id),
+            qty: Number(line.qty || 1),
+            variant_value_ids: [...new Set((line.variant_value_ids || []).map(Number))]
+              .filter((v) => Number.isFinite(v))
+          }));
+
+        const payload = {
+          session_key: this.router.state.sessionKey || "",
+          service_type: this.router.state.service, // dine_in / take_away
+          items
+        };
+
+        const res = await Api.call("order_create_from_cart", payload);
+        if (res?.status !== "ok") {
+          this.router.setFooter(res?.message || "Create order failed");
+          return;
+        }
+
+        const data = res.data || {};
+        this.router.state.orderId = data.order_id;
+        this.router.state.orderNo = data.order_no;
+
+        this.router.setFooter(`Order created: ${data.order_no}`);
+        this.router.go("payment-method");
+      } catch (e) {
+        this.router.setFooter(String(e?.message || e || "Create order error"));
+      }
     }
   }
 };

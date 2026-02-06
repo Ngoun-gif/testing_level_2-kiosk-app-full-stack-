@@ -4,6 +4,8 @@ from backend.controllers.product_controller import ProductController
 from backend.controllers.variant_group_controller import VariantGroupController
 from backend.controllers.variant_value_controller import VariantValueController
 from backend.controllers.kiosk_menu_controller import KioskMenuController
+from backend.controllers.session_controller import SessionController
+
 
 
 class AppApi:
@@ -14,4 +16,5 @@ class AppApi:
         self.variant_group = VariantGroupController()
         self.variant_value = VariantValueController()
         self.kiosk_menu = KioskMenuController()
+        self.session = SessionController(minutes=7)
 

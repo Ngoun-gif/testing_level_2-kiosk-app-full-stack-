@@ -25,8 +25,17 @@ Kiosk.modules.splash = {
   },
 
   methods: {
-    goService() {
+    async goService() {
+      // ✅ Start backend session ONLY when leaving splash
+      try {
+        await Kiosk.session.ensureBackendSession?.();
+      } catch (e) {}
+
+      // go to ordering flow
       Kiosk.router.go("service");
+
+      // start idle timer for ordering pages
+      Kiosk.session.resetIdleTimer?.();
     }
   }
 };

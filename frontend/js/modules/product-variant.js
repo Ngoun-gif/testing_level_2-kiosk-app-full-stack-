@@ -30,8 +30,8 @@ Kiosk.modules["product-variant"] = {
       for (const gid in this.selections) {
         const picked = this.selections[gid] || [];
         const vals = this.valuesByGroup[gid] || [];
-        picked.forEach(vid => {
-          const v = vals.find(x => Number(x.id) === Number(vid));
+        picked.forEach((vid) => {
+          const v = vals.find((x) => Number(x.id) === Number(vid));
           extra += Number(v?.extra_price || 0);
         });
       }
@@ -50,13 +50,13 @@ Kiosk.modules["product-variant"] = {
       return;
     }
 
-    // read edit index passed from menu
+    // read edit index passed from cart
     this.editIndex = (this.router.state.editCartIndex ?? null);
 
     // find product from menuAll (prod_by_sub)
     let found = null;
     for (const k in (menuAll.prod_by_sub || {})) {
-      const p = (menuAll.prod_by_sub[k] || []).find(x => Number(x.id) === pid);
+      const p = (menuAll.prod_by_sub[k] || []).find((x) => Number(x.id) === pid);
       if (p) { found = p; break; }
     }
     this.product = found;
@@ -68,7 +68,7 @@ Kiosk.modules["product-variant"] = {
     }
 
     // groups for this product
-    this.groups = (menuAll.group_by_product?.[pid] || []).map(g => ({
+    this.groups = (menuAll.group_by_product?.[pid] || []).map((g) => ({
       ...g,
       id: Number(g.id),
       max_select: Number(g.max_select || 1),
@@ -78,11 +78,10 @@ Kiosk.modules["product-variant"] = {
     // init selections + values
     const sel = {};
     const vbg = {};
-
-    this.groups.forEach(g => {
+    this.groups.forEach((g) => {
       const gid = Number(g.id);
       sel[gid] = [];
-      vbg[gid] = (menuAll.value_by_group?.[gid] || []).map(v => ({
+      vbg[gid] = (menuAll.value_by_group?.[gid] || []).map((v) => ({
         ...v,
         id: Number(v.id),
         extra_price: Number(v.extra_price || 0)
@@ -92,7 +91,7 @@ Kiosk.modules["product-variant"] = {
     this.selections = sel;
     this.valuesByGroup = vbg;
 
-    // EDIT MODE: preload from cart line
+    // EDIT MODE: preload from cart line (only ids + qty are trusted)
     if (this.editIndex !== null) {
       const cart = this.router.state.cart || [];
       const line = cart[this.editIndex];
@@ -101,12 +100,17 @@ Kiosk.modules["product-variant"] = {
         this.qty = Number(line.qty || 1);
 
         const sel2 = { ...this.selections };
-        (line.variants || []).forEach(v => {
-          const gid = Number(v.group_id);
-          const vid = Number(v.value_id);
-          const cur = sel2[gid] || [];
-          if (!cur.includes(vid)) sel2[gid] = [...cur, vid];
-        });
+        const ids = (line.variant_value_ids || []).map(Number);
+
+        // map ids to groups based on current valuesByGroup
+        for (const gidStr in vbg) {
+          const gid = Number(gidStr);
+          const values = vbg[gid] || [];
+          sel2[gid] = ids.filter((vid) =>
+            values.some((vv) => Number(vv.id) === Number(vid))
+          );
+        }
+
         this.selections = sel2;
       } else {
         this.editIndex = null;
@@ -114,29 +118,23 @@ Kiosk.modules["product-variant"] = {
       }
     }
 
-    this.renderTick++; // paint
+    this.renderTick++;
   },
 
   methods: {
-    // ✅ EXE-safe: prefer backend-provided file URL
     img(objOrPath) {
-      // supports img(product) or img("file:///..") or img("uploads/..")
       if (!objOrPath) return "./assets/placeholder.png";
 
       let url = "";
-      if (typeof objOrPath === "string") {
-        url = objOrPath;
-      } else if (objOrPath && typeof objOrPath === "object") {
+      if (typeof objOrPath === "string") url = objOrPath;
+      else if (objOrPath && typeof objOrPath === "object") {
         url = objOrPath.image_url || objOrPath.imageUrl || objOrPath.image_path || "";
       }
 
       if (!url) return "./assets/placeholder.png";
 
-      if (String(url).startsWith("file:///")) {
-        return String(url) + "?v=" + this.renderTick;
-      }
+      if (String(url).startsWith("file:///")) return String(url) + "?v=" + this.renderTick;
 
-      // fallback (dev only)
       const clean = String(url).replace(/^\/+/, "");
       return "./" + clean + "?v=" + this.renderTick;
     },
@@ -156,7 +154,7 @@ Kiosk.modules["product-variant"] = {
       if (max === 1) {
         nextArr = [vid];
       } else {
-        if (cur.includes(vid)) nextArr = cur.filter(x => x !== vid);
+        if (cur.includes(vid)) nextArr = cur.filter((x) => x !== vid);
         else {
           if (cur.length >= max) return;
           nextArr = [...cur, vid];
@@ -164,8 +162,6 @@ Kiosk.modules["product-variant"] = {
       }
 
       this.selections = { ...this.selections, [gid]: nextArr };
-
-      // force UI refresh for kiosk/webview
       this.renderTick++;
       this.$forceUpdate?.();
     },
@@ -197,39 +193,57 @@ Kiosk.modules["product-variant"] = {
 
       const cart = this.router.state.cart || [];
 
-      const variants = this.groups.flatMap(g => {
-        const gid = Number(g.id);
-        const picked = this.selections[gid] || [];
-        return picked.map(vid => {
-          const v = (this.valuesByGroup[gid] || []).find(x => Number(x.id) === Number(vid));
-          if (!v) return null;
-          return {
-            group_id: gid,
-            group_name: g.name,
-            value_id: Number(v.id),
-            value_name: v.name,
-            extra_price: Number(v.extra_price || 0)
-          };
-        }).filter(Boolean);
-      });
+      // ✅ build selected variant ids (secure checkout payload)
+      const variant_value_ids = [
+        ...new Set(
+          this.groups.flatMap((g) => {
+            const gid = Number(g.id);
+            return (this.selections[gid] || []).map((vid) => Number(vid));
+          })
+        )
+      ].filter(Number.isFinite);
 
+      // UI-only variant display objects
+      const variants = this.groups
+        .flatMap((g) => {
+          const gid = Number(g.id);
+          const picked = this.selections[gid] || [];
+          return picked
+            .map((vid) => {
+              const v = (this.valuesByGroup[gid] || []).find(
+                (x) => Number(x.id) === Number(vid)
+              );
+              if (!v) return null;
+              return {
+                group_id: gid,
+                group_name: g.name,
+                value_id: Number(v.id),
+                value_name: v.name,
+                extra_price: Number(v.extra_price || 0)
+              };
+            })
+            .filter(Boolean);
+        })
+        .filter(Boolean);
+
+      // ✅ cart line: ids+qty authoritative; rest UI-only
       const line = {
         product_id: Number(this.product.id),
-        name: this.product.name,
+        qty: Number(this.qty || 1),
+        variant_value_ids,
 
-        // ✅ store both (cart page can use image_url safely)
+        // UI fields (not trusted by backend)
+        name: this.product.name,
         image_path: this.product.image_path || null,
         image_url: this.product.image_url || null,
-
         base_price: Number(this.product.base_price || 0),
-        qty: Number(this.qty || 1),
         variants,
         line_total: Number(this.lineTotal || 0)
       };
 
-      // update existing line if edit mode
-      const idx = (this.router.state.editCartIndex ?? null);
-      if (idx !== null && cart[idx] && Number(cart[idx].product_id) === line.product_id) {
+      // ✅ edit mode updates by index (not by product_id)
+      const idx = this.router.state.editCartIndex ?? null;
+      if (idx !== null && cart[idx]) {
         cart[idx] = line;
         this.router.setFooter("Updated cart ✅");
       } else {

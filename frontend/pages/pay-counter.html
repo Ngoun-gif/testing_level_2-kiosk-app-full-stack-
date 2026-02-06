@@ -1,53 +1,52 @@
-<div class="pqr">
+
+  <div class="pqr">
     <!-- header -->
     <div class="pqr-header">
-        <button class="pqr-back" type="button" @click="back">← Back</button>
-        <div class="pqr-title">Counter Payment</div>
-        <div style="width:90px;"></div>
+      <button class="pqr-back" type="button" @click="back">← Back</button>
+      <div class="pqr-title">Counter Payment</div>
+      <div style="width:90px;"></div>
     </div>
 
     <div class="pqr-body">
 
-        <div class="pqr-panel">
+      <div class="pqr-panel">
 
-            <!-- FULL IMAGE AREA -->
-            <div class="pqr-poster pqr-poster-full">
-                <img class="pqr-img" src="./assets/payment-counter/counter-cashier.png" alt="QR Payment"
-                    @error="e=>e.target.src='./assets/placeholder.png'">
-            </div>
-
-            <!-- TIPS CONTAINER (BOTTOM) -->
-
-
-        </div>
-        <div class="pqr-tips-wrap">
-            <div class="pqr-tips">
-                <div class="pqr-tip">
-                    <div class="pqr-tip-title">Tip 1 : Go to cashier and tell your order.</div>
-
-                    <div class="pqr-tip-title">Tip 2 : After payment, press “Print Receipt".</div>
-
-                    <div class="pqr-tip-title">Tip 3 : Cashier will verify the transaction manually.</div>
-
-                </div>
-            </div>
+        <!-- FULL IMAGE AREA -->
+        <div class="pqr-poster pqr-poster-full">
+          <img class="pqr-img"
+               src="./assets/payment-counter/counter-cashier.png"
+               alt="Counter Payment"
+               @error="e=>e.target.src='./assets/placeholder.png'">
         </div>
 
-        <!-- total -->
-        <div class="pqr-total">
-            <div class="pqr-total-label">Order Total</div>
-            <div class="pqr-total-amount">$ {{ total.toFixed(2) }}</div>
-        </div>
+      </div>
 
-        <!-- actions -->
-        <div class="pqr-actions">
-            <button class="pqr-btn pqr-print" type="button" :disabled="count===0 || printing" @click="printReceipt">
-                <span v-if="printing" class="pqr-spin"></span>
-                Print Receipt
-            </button>
-
-           
+      <div class="pqr-tips-wrap">
+        <div class="pqr-tips">
+          <div class="pqr-tip">
+            <div class="pqr-tip-title">Tip 1 : Go to cashier and tell your order.</div>
+            <div class="pqr-tip-title">Tip 2 : After payment, press “Print Receipt".</div>
+            <div class="pqr-tip-title">Tip 3 : Cashier will verify the transaction manually.</div>
+          </div>
         </div>
+      </div>
+
+      <!-- total -->
+      <div class="pqr-total">
+        <div class="pqr-total-label">Order Total</div>
+        <div class="pqr-total-amount">$ {{ Number(total || 0).toFixed(2) }}</div>
+      </div>
+
+      <!-- actions -->
+      <div class="pqr-actions">
+        <button class="pqr-btn pqr-print"
+                type="button"
+                :disabled="count===0 || printing || loading"
+                @click="printReceipt">
+          <span v-if="printing" class="pqr-spin"></span>
+          <span v-else>Print Receipt</span>
+        </button>
+      </div>
 
     </div>
-</div>
+  </div>

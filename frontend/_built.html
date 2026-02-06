@@ -7,6 +7,7 @@
   <!-- ✅ CSS -->
   <link rel="stylesheet" href="./css/bootstrap.min.css">
   <link rel="stylesheet" href="./css/kiosk.css">
+  <link rel="stylesheet" href="./css/idle-warning.css">
   <link rel="stylesheet" href="./css/splash.css">
   <link rel="stylesheet" href="./css/service.css">
   <link rel="stylesheet" href="./css/menu.css">
@@ -34,7 +35,12 @@
   <script defer src="./js/core/tpl.js"></script>
   <script defer src="./js/core/api.js"></script>
   <script defer src="./js/core/router.js"></script>
-  <script defer src="./js/core/utils.js"></script>
+  <script defer src="./js/core/session.js"></script>
+  <script defer src="./js/core/receipt-payload.js"></script>
+  <script defer src="./js/core/time-utils.js"></script>
+
+
+
 
 
   <!-- ✅ Modules -->
@@ -44,8 +50,8 @@
   <script defer src="./js/modules/product-variant.js"></script>
   <script defer src="./js/modules/cart.js"></script>
   <script defer src="./js/modules/payment-method.js"></script>
-  <script defer src="./js/modules/pay-qr.js"></script>
-  <script defer src="./js/modules/pay-counter.js"></script>
+  <script defer src="js/modules/qr-pay.js"></script>
+  <script defer src="js/modules/counter-pay.js"></script>
   <script defer src="./js/modules/receipt.js"></script>
 
 
@@ -61,7 +67,7 @@
   <div class="c2">
 
     <div class="c2-header">
-      <div class="c2-header-title">Your Order</div>
+      <div class="c2-header-title">Your Cart</div>
     </div>
 
     <div class="c2-body">
@@ -132,11 +138,42 @@
       <button class="c2-back" type="button" @click="goMenu">Back</button>
 
       <button class="c2-pay" type="button" :disabled="count === 0" @click="confirmOrder">
-        Pay
+        Place Order
       </button>
     </div>
 
   </div>
+
+</template>
+
+
+<template id="tpl-idle-warning">
+<div class="idle-overlay" v-if="router.state.idleWarning">
+  <div class="idle-modal" :class="{ 'is-urgent': Number(router.state.idleCountdown) <= 5 }">
+
+    <div class="idle-icon">⚠️</div>
+
+    <h1 class="idle-title">Session Inactive</h1>
+    <p class="idle-sub">
+      No activity detected.<br>
+      Your session will end soon.
+    </p>
+
+    <div class="idle-countdown">
+      {{ router.state.idleCountdown }}
+      <span class="idle-sec">seconds</span>
+    </div>
+
+    <button class="idle-continue"
+            type="button"
+            @click="Kiosk.session.continueSession()">
+      Continue Order
+    </button>
+
+    <div class="idle-hint">Touch anywhere to continue</div>
+
+  </div>
+</div>
 
 </template>
 
@@ -213,116 +250,136 @@
 
 
 <template id="tpl-pay-counter">
-<div class="pqr">
+
+  <div class="pqr">
     <!-- header -->
     <div class="pqr-header">
-        <button class="pqr-back" type="button" @click="back">← Back</button>
-        <div class="pqr-title">Counter Payment</div>
-        <div style="width:90px;"></div>
+      <button class="pqr-back" type="button" @click="back">← Back</button>
+      <div class="pqr-title">Counter Payment</div>
+      <div style="width:90px;"></div>
     </div>
 
     <div class="pqr-body">
 
-        <div class="pqr-panel">
+      <div class="pqr-panel">
 
-            <!-- FULL IMAGE AREA -->
-            <div class="pqr-poster pqr-poster-full">
-                <img class="pqr-img" src="./assets/payment-counter/counter-cashier.png" alt="QR Payment"
-                    @error="e=>e.target.src='./assets/placeholder.png'">
-            </div>
-
-            <!-- TIPS CONTAINER (BOTTOM) -->
-
-
-        </div>
-        <div class="pqr-tips-wrap">
-            <div class="pqr-tips">
-                <div class="pqr-tip">
-                    <div class="pqr-tip-title">Tip 1 : Go to cashier and tell your order.</div>
-
-                    <div class="pqr-tip-title">Tip 2 : After payment, press “Print Receipt".</div>
-
-                    <div class="pqr-tip-title">Tip 3 : Cashier will verify the transaction manually.</div>
-
-                </div>
-            </div>
+        <!-- FULL IMAGE AREA -->
+        <div class="pqr-poster pqr-poster-full">
+          <img class="pqr-img"
+               src="./assets/payment-counter/counter-cashier.png"
+               alt="Counter Payment"
+               @error="e=>e.target.src='./assets/placeholder.png'">
         </div>
 
-        <!-- total -->
-        <div class="pqr-total">
-            <div class="pqr-total-label">Order Total</div>
-            <div class="pqr-total-amount">$ {{ total.toFixed(2) }}</div>
-        </div>
+      </div>
 
-        <!-- actions -->
-        <div class="pqr-actions">
-            <button class="pqr-btn pqr-print" type="button" :disabled="count===0 || printing" @click="printReceipt">
-                <span v-if="printing" class="pqr-spin"></span>
-                Print Receipt
-            </button>
-
-           
+      <div class="pqr-tips-wrap">
+        <div class="pqr-tips">
+          <div class="pqr-tip">
+            <div class="pqr-tip-title">Tip 1 : Go to cashier and tell your order.</div>
+            <div class="pqr-tip-title">Tip 2 : After payment, press “Print Receipt".</div>
+            <div class="pqr-tip-title">Tip 3 : Cashier will verify the transaction manually.</div>
+          </div>
         </div>
+      </div>
+
+      <!-- total -->
+      <div class="pqr-total">
+        <div class="pqr-total-label">Order Total</div>
+        <div class="pqr-total-amount">$ {{ Number(total || 0).toFixed(2) }}</div>
+      </div>
+
+      <!-- actions -->
+      <div class="pqr-actions">
+        <button class="pqr-btn pqr-print"
+                type="button"
+                :disabled="count===0 || printing || loading"
+                @click="printReceipt">
+          <span v-if="printing" class="pqr-spin"></span>
+          <span v-else>Print Receipt</span>
+        </button>
+      </div>
 
     </div>
-</div>
+  </div>
+
 </template>
 
 
 <template id="tpl-payment-method">
 
-    <div id="payment-method" class="pm1">
+  <div id="payment-method" class="pm1">
 
-        <div class="pm1-wrap">
+    <div class="pm1-wrap">
 
-            <div class="pm1-title">Select Payment Method</div>
-            <div class="pm1-sub">Choose how you would like to pay for your order</div>
+      <div class="pm1-title">Select Payment Method</div>
+      <div class="pm1-sub">Choose how you would like to pay for your order</div>
 
-            <!-- OPTIONS -->
-            <div class="pm1-grid">
+      <!-- OPTIONS -->
+      <div class="pm1-grid">
 
-                <!-- COUNTER -->
-                <button class="pm1-card" :class="{ selected: selected === 'counter' }" type="button"
-                    @click="select('counter')">
-                    <div class="pm1-icon">
-                        <img src="./assets/payment-method/counter_payment.png" alt="Pay at Counter">
-                    </div>
-                    <div class="pm1-card-title">Pay at Counter</div>
-                    <div class="pm1-card-desc">Pay with cash or card at the counter</div>
-                </button>
+        <!-- COUNTER -->
+        <button class="pm1-card"
+                :class="{ selected: selected === 'counter' }"
+                type="button"
+                @click="select('counter')">
+          <div class="pm1-icon">
+            <img src="./assets/payment-method/counter_payment.png" alt="Pay at Counter">
+          </div>
+          <div class="pm1-card-title">Pay at Counter</div>
+          <div class="pm1-card-desc">Pay with cash or card at the counter</div>
+        </button>
 
-                <!-- QR -->
-                <button class="pm1-card" :class="{ selected: selected === 'qrcode' }" type="button"
-                    @click="select('qrcode')">
-                    <div class="pm1-icon">
-                        <img src="./assets/payment-method/qr_payment.png" alt="Scan QR Code">
-                    </div>
-                    <div class="pm1-card-title">Scan QR Code</div>
-                    <div class="pm1-card-desc">Pay now with ABA and other banks using Bakong</div>
-                </button>
+        <!-- QR -->
+        <button class="pm1-card"
+                :class="{ selected: selected === 'qrcode' }"
+                type="button"
+                @click="select('qrcode')">
+          <div class="pm1-icon">
+            <img src="./assets/payment-method/qr_payment.png" alt="Scan QR Code">
+          </div>
+          <div class="pm1-card-title">Scan QR Code</div>
+          <div class="pm1-card-desc">Pay now with ABA and other banks using Bakong</div>
+        </button>
 
-            </div>
+      </div>
 
-            <!-- TOTAL -->
-            <div class="pm1-total">
-                <div class="pm1-total-label">Order Total</div>
-                <div class="pm1-total-amount">$ {{ total.toFixed(2) }}</div>
-            </div>
+      <!-- TOTAL -->
+      <div class="pm1-total">
+        <div class="pm1-total-label">Order Total</div>
+        <div class="pm1-total-amount">$ {{ total.toFixed(2) }}</div>
+      </div>
 
-            <!-- ACTIONS -->
-            <div class="pm1-actions">
-                <button class="pm1-continue" type="button" @click="continueNext" :disabled="count===0">
-                    Continue
-                </button>
+      <!-- ACTIONS -->
+      <div class="pm1-actions">
+        <button class="pm1-continue"
+                type="button"
+                @click="continueNext"
+                :disabled="count===0 || saving || loading">
+          <span v-if="loading">Loading…</span>
+          <span v-else-if="saving">Saving…</span>
+          <span v-else>Continue</span>
+        </button>
 
-                <button class="pm1-back" type="button" @click="back">
-                    Back
-                </button>
-            </div>
+        <button class="pm1-cancel"
+                type="button"
+                @click="cancelOrder"
+                :disabled="saving || loading">
+          Cancel Order
+        </button>
 
-        </div>
+        <button class="pm1-back"
+                type="button"
+                @click="back"
+                :disabled="saving || loading">
+          Back
+        </button>
+      </div>
 
     </div>
+
+  </div>
+
 
 </template>
 

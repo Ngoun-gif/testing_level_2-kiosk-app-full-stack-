@@ -118,6 +118,83 @@ def init_db():
 
         CREATE UNIQUE INDEX IF NOT EXISTS uq_variant_values_group_name
         ON variant_values (group_id, name);
+        
+        -- =========================
+        -- Sessions
+        -- =========================
+        CREATE TABLE IF NOT EXISTS sessions (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_key  TEXT NOT NULL UNIQUE,
+            status       TEXT NOT NULL DEFAULT 'ACTIVE',  -- ACTIVE, EXPIRED, CLOSED
+            started_at   TEXT NOT NULL DEFAULT (datetime('now')),
+            last_seen_at TEXT NOT NULL DEFAULT (datetime('now')),
+            expires_at   TEXT NOT NULL,
+            closed_at    TEXT
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_sessions_status_expires
+        ON sessions (status, expires_at);
+        
+        -- =========================
+        -- Orders (Level 2)
+        -- =========================
+        CREATE TABLE IF NOT EXISTS orders (
+          id           INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_key  TEXT,
+          order_no     TEXT UNIQUE,
+          service_type TEXT NOT NULL,      -- dine_in / take_away
+          payment_type TEXT,               -- counter / qr
+          status       TEXT NOT NULL DEFAULT 'CREATED',  -- CREATED, PAID, PRINTED, CANCELLED
+          total_amount REAL NOT NULL DEFAULT 0,
+          created_at   TEXT DEFAULT (datetime('now')),
+          paid_at      TEXT,
+          printed_at   TEXT,
+          cancelled_at TEXT
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_orders_status
+        ON orders(status);
+        
+        CREATE INDEX IF NOT EXISTS idx_orders_created
+        ON orders(created_at);
+        
+        -- =========================
+        -- Order Items
+        -- =========================
+        CREATE TABLE IF NOT EXISTS order_items (
+          id          INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_id    INTEGER NOT NULL,
+          product_id  INTEGER,
+          name        TEXT NOT NULL,
+          qty         INTEGER NOT NULL DEFAULT 1,
+          base_price  REAL NOT NULL DEFAULT 0,
+          line_total  REAL NOT NULL DEFAULT 0,
+          image_path  TEXT,
+          image_url   TEXT,
+          FOREIGN KEY(order_id) REFERENCES orders(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_order_items_order
+        ON order_items(order_id);
+        
+        -- =========================
+        -- Order Item Variants
+        -- =========================
+        CREATE TABLE IF NOT EXISTS order_item_variants (
+          id            INTEGER PRIMARY KEY AUTOINCREMENT,
+          order_item_id INTEGER NOT NULL,
+          group_id      INTEGER,
+          group_name    TEXT,
+          value_id      INTEGER,
+          value_name    TEXT,
+          extra_price   REAL NOT NULL DEFAULT 0,
+          FOREIGN KEY(order_item_id) REFERENCES order_items(id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_oiv_item
+        ON order_item_variants(order_item_id);
+
+
         """)
 
         conn.commit()

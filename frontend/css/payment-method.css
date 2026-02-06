@@ -140,6 +140,7 @@
   display: flex;
   gap: 16px;
   justify-content: center;
+  flex-wrap: wrap; /* ✅ allow 3 buttons on smaller widths */
 }
 
 .pm1-continue {
@@ -164,6 +165,29 @@
   transform: scale(.99);
 }
 
+/* ✅ new cancel button */
+.pm1-cancel{
+  border: 0;
+  background: #ef4444;
+  color: #fff;
+  font-weight: 950;
+  border-radius: 16px;
+  height: 70px;
+  min-width: 220px;
+  font-size: 1.25rem;
+  transition: transform .18s ease, opacity .18s ease;
+  box-shadow: 0 10px 22px rgba(239, 68, 68, 0.22);
+}
+
+.pm1-cancel:active {
+  transform: scale(.99);
+}
+
+.pm1-cancel:disabled {
+  opacity: .6;
+  box-shadow: none;
+}
+
 .pm1-back {
   border: 0;
   background: #9ca3af;
@@ -180,6 +204,10 @@
   transform: scale(.99);
 }
 
+.pm1-back:disabled {
+  opacity: .6;
+}
+
 @media (max-width: 768px) {
   .pm1-grid {
     grid-template-columns: 1fr;
@@ -190,6 +218,7 @@
   }
 
   .pm1-continue,
+  .pm1-cancel,
   .pm1-back {
     width: 100%;
     min-width: unset;

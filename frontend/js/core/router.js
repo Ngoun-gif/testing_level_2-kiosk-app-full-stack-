@@ -14,7 +14,16 @@ Kiosk.router = {
 
     // payment states
     paymentMethod: null,
-    lastReceipt: null
+    lastReceipt: null,
+
+    // ✅ session states (Level 2)
+    sessionKey: null,
+    idleWarning: false,
+    idleCountdown: 0,
+
+    orderId: null,
+    orderNo: null,
+
   }),
 
   go(name) {

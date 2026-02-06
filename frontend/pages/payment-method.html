@@ -1,53 +1,73 @@
 
-    <div id="payment-method" class="pm1">
+  <div id="payment-method" class="pm1">
 
-        <div class="pm1-wrap">
+    <div class="pm1-wrap">
 
-            <div class="pm1-title">Select Payment Method</div>
-            <div class="pm1-sub">Choose how you would like to pay for your order</div>
+      <div class="pm1-title">Select Payment Method</div>
+      <div class="pm1-sub">Choose how you would like to pay for your order</div>
 
-            <!-- OPTIONS -->
-            <div class="pm1-grid">
+      <!-- OPTIONS -->
+      <div class="pm1-grid">
 
-                <!-- COUNTER -->
-                <button class="pm1-card" :class="{ selected: selected === 'counter' }" type="button"
-                    @click="select('counter')">
-                    <div class="pm1-icon">
-                        <img src="./assets/payment-method/counter_payment.png" alt="Pay at Counter">
-                    </div>
-                    <div class="pm1-card-title">Pay at Counter</div>
-                    <div class="pm1-card-desc">Pay with cash or card at the counter</div>
-                </button>
+        <!-- COUNTER -->
+        <button class="pm1-card"
+                :class="{ selected: selected === 'counter' }"
+                type="button"
+                @click="select('counter')">
+          <div class="pm1-icon">
+            <img src="./assets/payment-method/counter_payment.png" alt="Pay at Counter">
+          </div>
+          <div class="pm1-card-title">Pay at Counter</div>
+          <div class="pm1-card-desc">Pay with cash or card at the counter</div>
+        </button>
 
-                <!-- QR -->
-                <button class="pm1-card" :class="{ selected: selected === 'qrcode' }" type="button"
-                    @click="select('qrcode')">
-                    <div class="pm1-icon">
-                        <img src="./assets/payment-method/qr_payment.png" alt="Scan QR Code">
-                    </div>
-                    <div class="pm1-card-title">Scan QR Code</div>
-                    <div class="pm1-card-desc">Pay now with ABA and other banks using Bakong</div>
-                </button>
+        <!-- QR -->
+        <button class="pm1-card"
+                :class="{ selected: selected === 'qrcode' }"
+                type="button"
+                @click="select('qrcode')">
+          <div class="pm1-icon">
+            <img src="./assets/payment-method/qr_payment.png" alt="Scan QR Code">
+          </div>
+          <div class="pm1-card-title">Scan QR Code</div>
+          <div class="pm1-card-desc">Pay now with ABA and other banks using Bakong</div>
+        </button>
 
-            </div>
+      </div>
 
-            <!-- TOTAL -->
-            <div class="pm1-total">
-                <div class="pm1-total-label">Order Total</div>
-                <div class="pm1-total-amount">$ {{ total.toFixed(2) }}</div>
-            </div>
+      <!-- TOTAL -->
+      <div class="pm1-total">
+        <div class="pm1-total-label">Order Total</div>
+        <div class="pm1-total-amount">$ {{ total.toFixed(2) }}</div>
+      </div>
 
-            <!-- ACTIONS -->
-            <div class="pm1-actions">
-                <button class="pm1-continue" type="button" @click="continueNext" :disabled="count===0">
-                    Continue
-                </button>
+      <!-- ACTIONS -->
+      <div class="pm1-actions">
+        <button class="pm1-continue"
+                type="button"
+                @click="continueNext"
+                :disabled="count===0 || saving || loading">
+          <span v-if="loading">Loading…</span>
+          <span v-else-if="saving">Saving…</span>
+          <span v-else>Continue</span>
+        </button>
 
-                <button class="pm1-back" type="button" @click="back">
-                    Back
-                </button>
-            </div>
+        <button class="pm1-cancel"
+                type="button"
+                @click="cancelOrder"
+                :disabled="saving || loading">
+          Cancel Order
+        </button>
 
-        </div>
+        <button class="pm1-back"
+                type="button"
+                @click="back"
+                :disabled="saving || loading">
+          Back
+        </button>
+      </div>
 
     </div>
+
+  </div>
+

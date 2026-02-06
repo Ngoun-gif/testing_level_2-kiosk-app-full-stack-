@@ -1,0 +1,26 @@
+<div class="idle-overlay" v-if="router.state.idleWarning">
+  <div class="idle-modal" :class="{ 'is-urgent': Number(router.state.idleCountdown) <= 5 }">
+
+    <div class="idle-icon">⚠️</div>
+
+    <h1 class="idle-title">Session Inactive</h1>
+    <p class="idle-sub">
+      No activity detected.<br>
+      Your session will end soon.
+    </p>
+
+    <div class="idle-countdown">
+      {{ router.state.idleCountdown }}
+      <span class="idle-sec">seconds</span>
+    </div>
+
+    <button class="idle-continue"
+            type="button"
+            @click="Kiosk.session.continueSession()">
+      Continue Order
+    </button>
+
+    <div class="idle-hint">Touch anywhere to continue</div>
+
+  </div>
+</div>
