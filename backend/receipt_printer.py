@@ -9,16 +9,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from zoneinfo import ZoneInfo
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 
+# ZoneInfo may fail on Windows if tzdata is missing (OK - we will fallback)
+try:
+    from zoneinfo import ZoneInfo  # py 3.9+
+except Exception:
+    ZoneInfo = None
+
 
 def app_root() -> Path:
-    """
-    dev: project folder
-    exe (--onefile): sys._MEIPASS extracted folder
-    """
     if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
         return Path(sys._MEIPASS)
     return Path(__file__).resolve().parents[1]
@@ -35,22 +36,36 @@ def _safe(s: Any) -> str:
     return str(s or "").replace("\n", " ").strip()
 
 
-class ReceiptPrinter:
-    """
-    L1 receipt printing:
-      - Build 80mm PDF
-      - Silent print via SumatraPDF.exe
-      - Prints to Windows default printer unless payload printer_name provided
-    """
+def _now_phnom_penh_str() -> str:
+    try:
+        if ZoneInfo:
+            return datetime.now(ZoneInfo("Asia/Phnom_Penh")).strftime("%Y-%m-%d %H:%M:%S")
+    except Exception:
+        pass
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
+def _normalize_datetime_str(s: Any) -> str:
+    s = _safe(s)
+    if not s:
+        return ""
+    s = s.replace("T", " ").replace("Z", "")
+    if "." in s:
+        s = s.split(".", 1)[0]
+    if "+" in s:
+        s = s.split("+", 1)[0]
+    # best effort
+    return s.strip()
+
+
+class ReceiptPrinter:
     def __init__(self):
         root = app_root()
-        # keep as str to avoid pywebview introspection issues
         self._sumatra_exe = str(root / "tools" / "SumatraPDF.exe")
 
     def _get_default_printer(self) -> Optional[str]:
         try:
-            import win32print  # pywin32
+            import win32print
             name = win32print.GetDefaultPrinter()
             return str(name).strip() if name else None
         except Exception:
@@ -62,7 +77,6 @@ class ReceiptPrinter:
             if not sumatra_path.exists():
                 return {"ok": False, "error": f"SumatraPDF.exe not found. Expected at: {sumatra_path}"}
 
-            # printer: payload -> default
             printer_name = _safe(payload.get("printer_name")) or self._get_default_printer()
             if not printer_name:
                 return {"ok": False, "error": "No default printer found. Please set a default printer in Windows."}
@@ -82,42 +96,69 @@ class ReceiptPrinter:
             return {"ok": False, "error": str(e)}
 
     def _normalize_payment(self, raw: Any) -> str:
-        """
-        Prints clean values.
-        Supports:
-          - QR-PAY / COUNTER-PAY (your new values)
-          - qrcode / counter / QR_PAYMENT / COUNTER_PAYMENT (old)
-        """
         m = _safe(raw)
         if not m:
             return ""
-
         low = m.lower().replace("_", "-").strip()
 
-        if low in ("qrcode", "qr", "qr-pay", "qr-payment"):
+        if low in ("qrcode", "qr", "qr-pay", "qr-payment", "qr-payment-method"):
             return "QR-PAY"
         if low in ("counter", "cash", "counter-pay", "counter-payment"):
             return "COUNTER-PAY"
 
-        # fallback
         return m.upper()
 
+    def _ensure_lines(self, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Support both formats:
+          - payload.lines (preferred)
+          - payload.items (order snapshot style)
+        """
+        lines = payload.get("lines")
+        if isinstance(lines, list) and lines:
+            return lines
+
+        items = payload.get("items")
+        if isinstance(items, list) and items:
+            out = []
+            for i, it in enumerate(items):
+                base = float(it.get("base_price") or 0)
+                opts = []
+                for v in (it.get("variants") or []):
+                    opts.append({
+                        "name": f"{_safe(v.get('group_name'))}: {_safe(v.get('value_name'))}",
+                        "price": float(v.get("extra_price") or 0),
+                    })
+                out.append({
+                    "line_no": i + 1,
+                    "name": _safe(it.get("name", "Item")),
+                    "qty": float(it.get("qty") or 1),
+                    "unit_price": base,
+                    "line_total": float(it.get("line_total") or 0),
+                    "options": opts
+                })
+            return out
+
+        return []
+
     def _build_pdf(self, payload: Dict[str, Any], out_pdf: Path, width_mm: float = 80.0) -> None:
-        # ---------------- data ----------------
         shop_name = _safe(payload.get("shop_name", "SHOP NAME"))
-        address = _safe(payload.get("address", ""))   # optional
-        tel = _safe(payload.get("tel", ""))           # optional
+        address = _safe(payload.get("address", ""))
+        tel = _safe(payload.get("tel", ""))
 
         order_no = _safe(payload.get("order_no", ""))
+        service_type = _safe(payload.get("service_type", ""))  # optional print
         currency = _safe(payload.get("currency_symbol") or "$")
 
-        payment_label = self._normalize_payment(payload.get("payment_method", ""))
+        # accept both keys
+        raw_payment = payload.get("payment_method") or payload.get("payment_type") or ""
+        payment_label = self._normalize_payment(raw_payment)
 
-        created_at = _safe(payload.get("created_at"))
+        created_at = _normalize_datetime_str(payload.get("created_at", ""))
         if not created_at:
-            created_at = datetime.now(ZoneInfo("Asia/Phnom_Penh")).strftime("%Y-%m-%d %H:%M:%S")
+            created_at = _now_phnom_penh_str()
 
-        lines: List[Dict[str, Any]] = list(payload.get("lines") or [])
+        lines = self._ensure_lines(payload)
         lines.sort(key=lambda it: int(it.get("line_no", 999999)))
 
         subtotal = float(payload.get("subtotal") or 0)
@@ -125,28 +166,27 @@ class ReceiptPrinter:
         tax = float(payload.get("tax") or 0)
         total = float(payload.get("total") or 0)
 
-        # extra-dark mode (optional)
-        # payload["dark_mode"]=True if you want even heavier by double-print
+        # fallback if not supplied
+        if total == 0 and lines:
+            total = sum(float(it.get("line_total") or 0) for it in lines)
+        if subtotal == 0:
+            subtotal = total
+
         DARK_MODE = bool(payload.get("dark_mode", False))
 
         def money(v: Any) -> str:
             return f"{currency}{_money(v)}"
 
-        # ---------------- layout ----------------
-        # Monospace columns for W80
         COLS = 42
         PRICE_W = 10
         DESC_W = COLS - PRICE_W
 
-        # sizes (heavier ink)
         TITLE_SIZE = 14
         SUBTITLE_SIZE = 12
-        META_SIZE = 10        # Order/Date/Pay
-        ITEM_SIZE = 10        # qty line, subtotal line
+        META_SIZE = 10
+        ITEM_SIZE = 10
         HEAD_SIZE = 10
         TOTAL_SIZE = 12
-
-        # line height
         LH = 4.8 * mm
 
         def fit(s: str, w: int) -> str:
@@ -161,17 +201,16 @@ class ReceiptPrinter:
         def dash() -> str:
             return "-" * COLS
 
-        # estimate height
-        base_lines = 28
+        base_lines = 30
         dyn = 0
         for it in lines:
             name = _safe(it.get("name", "Item"))
             dyn += 2 if len(name) > 28 else 1
-            dyn += 1  # qty line
+            dyn += 1
             opts = it.get("options") or []
             if isinstance(opts, list):
                 dyn += len(opts)
-            dyn += 1  # blank spacer
+            dyn += 1
 
         est_lines = base_lines + dyn
         height_mm = max(190, est_lines * 4.6 + 45)
@@ -187,7 +226,6 @@ class ReceiptPrinter:
             nonlocal y
             y -= LH * mult
 
-        # ---- bold-by-default writers (more ink) ----
         def draw_left(text: str, size: int, bold: bool = True):
             c.setFont("Courier-Bold" if bold else "Courier", size)
             c.drawString(x, y, text)
@@ -203,20 +241,16 @@ class ReceiptPrinter:
             c.setFont("Courier-Bold" if bold else "Courier", size)
             c.drawString(x, y, text)
 
-        # ---- extra-dark printing (draw twice slightly offset) ----
         def dark_draw(fn, *args, **kwargs):
-            """If DARK_MODE True: draw twice with tiny offset to look darker on thermal."""
             fn(*args, **kwargs)
             if DARK_MODE:
-                # tiny offsets (0.2mm) makes strokes thicker
                 c.saveState()
                 c.translate(0.2 * mm, 0)
                 fn(*args, **kwargs)
                 c.restoreState()
 
-        # ---------------- HEADER ----------------
+        # HEADER
         dark_draw(draw_center, shop_name, TITLE_SIZE, True); down(1.1)
-
         if address:
             dark_draw(draw_center, address, 9, False); down(1.0)
         if tel:
@@ -224,42 +258,41 @@ class ReceiptPrinter:
 
         dark_draw(draw_left, stars(), 9, True); down(1.0)
 
-        receipt_title = "CASH RECEIPT" if "COUNTER" in payment_label or "CASH" in payment_label else "QR RECEIPT"
+        receipt_title = "CASH RECEIPT" if "COUNTER" in payment_label else "QR RECEIPT"
         dark_draw(draw_center, receipt_title, SUBTITLE_SIZE, True); down(1.1)
 
         dark_draw(draw_left, stars(), 9, True); down(1.2)
 
-        # Meta lines (BOLD + bigger to avoid blur)
         if order_no:
-            dark_draw(draw_left, f"Order: {order_no}", META_SIZE, True); down(1.1)
-        dark_draw(draw_left, f"Date : {created_at}", META_SIZE, True); down(1.1)
+            dark_draw(draw_left, f"Order : {order_no}", META_SIZE, True); down(1.1)
+        if service_type:
+            dark_draw(draw_left, f"Type  : {service_type}", META_SIZE, True); down(1.1)
+
+        dark_draw(draw_left, f"Date  : {created_at}", META_SIZE, True); down(1.1)
         if payment_label:
-            dark_draw(draw_left, f"Pay  : {payment_label}", META_SIZE, True); down(1.1)
+            dark_draw(draw_left, f"Pay   : {payment_label}", META_SIZE, True); down(1.1)
 
         down(0.6)
 
-        # ---------------- TABLE HEADER ----------------
+        # TABLE
         dark_draw(draw_lr, "Description", "Price", HEAD_SIZE, True); down(1.1)
         dark_draw(draw_left, dash(), 9, True); down(1.0)
 
-        # ---------------- ITEMS ----------------
+        # ITEMS
         for it in lines:
             name = _safe(it.get("name", "Item"))
             qty = float(it.get("qty") or 1)
             unit = float(it.get("unit_price") or it.get("price") or 0)
             line_total = float(it.get("line_total") or (qty * unit))
 
-            # item name (bold)
             if len(name) <= 28:
                 dark_draw(draw_lr, name, "", ITEM_SIZE, True); down(1.1)
             else:
                 dark_draw(draw_lr, name[:28], "", ITEM_SIZE, True); down(1.1)
                 dark_draw(draw_lr, name[28:56], "", ITEM_SIZE, True); down(1.1)
 
-            # qty line (bold + larger)
             dark_draw(draw_lr, f"{qty:g} x {money(unit)}", money(line_total), ITEM_SIZE, True); down(1.1)
 
-            # options (still readable: bold False but size 9)
             opts = it.get("options") or []
             if isinstance(opts, list):
                 for op in opts:
@@ -274,10 +307,9 @@ class ReceiptPrinter:
 
             down(0.7)
 
-        # ---------------- TOTALS ----------------
+        # TOTALS
         dark_draw(draw_left, stars(), 9, True); down(1.0)
 
-        # subtotal/discount/tax in bold to be readable
         dark_draw(draw_lr, "Subtotal", money(subtotal), ITEM_SIZE, True); down(1.1)
         if discount:
             dark_draw(draw_lr, "Discount", f"-{money(discount)}", ITEM_SIZE, True); down(1.1)
@@ -286,15 +318,12 @@ class ReceiptPrinter:
 
         dark_draw(draw_left, dash(), 9, True); down(1.0)
 
-        # total is already bold big
         dark_draw(draw_lr, "Total", money(total), TOTAL_SIZE, True); down(1.2)
 
         dark_draw(draw_left, stars(), 9, True); down(1.0)
-
         dark_draw(draw_center, "THANK YOU!", SUBTITLE_SIZE, True); down(1.2)
 
-        # optional barcode text
-        barcode_text = _safe(payload.get("barcode_text", ""))  # optional
+        barcode_text = _safe(payload.get("barcode_text", ""))
         if barcode_text:
             dark_draw(draw_center, barcode_text, 10, True); down(1.0)
 
@@ -305,9 +334,7 @@ class ReceiptPrinter:
         exe = Path(self._sumatra_exe).resolve()
         pdf_path = pdf_path.resolve()
 
-        # for 80mm receipts, noscale is usually best
         settings = f"copies={int(copies)},noscale"
-
         printer_name = str(printer_name).replace("\n", " ").strip()
 
         args = [
@@ -318,7 +345,6 @@ class ReceiptPrinter:
             str(pdf_path),
         ]
 
-        # debug: write exact command
         log_path = Path(tempfile.gettempdir()) / "kiosk_sumatra_cmd.txt"
         log_path.write_text(" ".join(args), encoding="utf-8")
 
